@@ -1,0 +1,34 @@
+# Qt 产生的本地编译文件夹
+build-*/
+build_*/
+/build
+/bin
+
+# Qt Creator 个人本地配置文件 (极其危险，绝对不能提交！)
+*.pro.user
+*.pro.user.*
+CMakeLists.txt.user*
+
+# 编译产生的中间文件
+*.o
+*.obj
+*.exe
+*.dll
+*.a
+*.lib
+
+# Makefile
+Makefile
+Makefile.*
+
+# 调试与发布目录
+/debug/
+/release/
+
+# Windows 系统垃圾
+.DS_Store
+Thumbs.db
+
+# 忽略所有编辑器的本地配置文件夹
+.idea/
+*.xml.user
