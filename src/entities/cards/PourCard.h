@@ -76,6 +76,7 @@ public:
 
                 // 安全通过，强行抽出一张顶牌！
                 engine->triggerPlayTopCard(false);
+
             });
         }
     }

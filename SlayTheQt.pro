@@ -15,6 +15,7 @@ SOURCES += \
     src/core/gamerng.cpp \
     src/core/objectfactory.cpp \
     src/core/savemanager.cpp \
+    src/entities/card.cpp \
     src/entities/enemy.cpp \
     src/entities/fighter.cpp \
     src/entities/player.cpp \
