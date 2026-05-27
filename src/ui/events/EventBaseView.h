@@ -41,6 +41,8 @@ protected:
     QGraphicsRectItem* m_darkOverlay = nullptr;
     QGraphicsTextItem* m_overlayText = nullptr;
 
+    QGraphicsPixmapItem* m_playerImage;
+    QPixmap m_playerPixmap;
     LeaveButton* m_leaveBtn = nullptr;
 
 private:
@@ -50,6 +52,4 @@ private:
 
     TopBar* m_topBar;
     RelicTray* m_relicTray = nullptr;
-    QGraphicsPixmapItem* m_playerImage;
-    QPixmap m_playerPixmap;
 };

@@ -20,6 +20,8 @@ SOURCES += \
     src/entities/enemy.cpp \
     src/entities/fighter.cpp \
     src/entities/player.cpp \
+    src/entities/relics/RelicImplementations.cpp \
+    src/entities/relics/relicmanager.cpp \
     src/entities/statusmanager.cpp \
     src/logic/battleengine.cpp \
     src/logic/cardfactory.cpp \
@@ -40,9 +42,11 @@ SOURCES += \
     src/ui/playeritem.cpp \
     src/ui/relictray.cpp \
     src/ui/events/CampfireView.cpp \
+    src/ui/events/ChestView.cpp \
     src/ui/events/EventBaseView.cpp \
     src/ui/events/IconButton.cpp \
     src/ui/events/LeaveButton.cpp \
+    src/ui/events/RelicPopupWidget.cpp \
     src/ui/events/SelectableCardItem.cpp \
     src/ui/events/TextButton.cpp \
     src/ui/shuffleeffectitem.cpp \
@@ -85,6 +89,9 @@ HEADERS += \
     src/entities/player.h \
     src/entities/relics/PenNibRelic.h \
     src/entities/relics/VajraRelic.h \
+    src/entities/relics/OrichalcumRelic.h \
+    src/entities/relics/AnchorRelic.h \
+    src/entities/relics/BagOfPreparationRelic.h \
     src/entities/relics/relic.h \
     src/entities/relics/relicmanager.h \
     src/entities/statusmanager.h \
@@ -109,9 +116,11 @@ HEADERS += \
     src/ui/playeritem.h \
     src/ui/relictray.h \
     src/ui/events/CampfireView.h \
+    src/ui/events/ChestView.h \
     src/ui/events/EventBaseView.h \
     src/ui/events/IconButton.h \
     src/ui/events/LeaveButton.h \
+    src/ui/events/RelicPopupWidget.h \
     src/ui/events/SelectableCardItem.h \
     src/ui/events/TextButton.h \
     src/ui/shuffleeffectitem.h \

@@ -1,0 +1,11 @@
+#include "AnchorRelic.h"
+#include "BagOfPreparationRelic.h"
+#include "OrichalcumRelic.h"
+#include "PenNibRelic.h"
+#include "VajraRelic.h"
+
+#include "moc_AnchorRelic.cpp"
+#include "moc_BagOfPreparationRelic.cpp"
+#include "moc_OrichalcumRelic.cpp"
+#include "moc_PenNibRelic.cpp"
+#include "moc_VajraRelic.cpp"

@@ -8,6 +8,7 @@ public:
     explicit LeaveButton(QGraphicsItem* parent = nullptr);
 
     void setIcon(const QString& imagePath);
+    void setText(const QString& text);
 
     QRectF boundingRect() const override;
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override;
@@ -22,8 +23,11 @@ protected:
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
 private:
+    QString m_text;
     bool m_isHovered = false;
     bool m_isPressed = false;
     QFont m_font;
     QPixmap m_icon;
+    int m_width = 200;
+    int m_height = 100;
 };
