@@ -26,6 +26,7 @@ SOURCES += \
     src/logic/battleengine.cpp \
     src/logic/cardmanager.cpp \
     src/main.cpp \
+    src/map/mapmanager.cpp \
     src/ui/RelicItem.cpp \
     src/ui/battlescene.cpp \
     src/ui/battleview.cpp \
@@ -90,6 +91,7 @@ HEADERS += \
     src/logic/battleengine.h \
     src/logic/cardmanager.h \
     src/logic/enemyfactory.h \
+    src/map/mapmanager.h \
     src/ui/ConfirmButton.h \
     src/ui/RelicItem.h \
     src/ui/battlescene.h \
