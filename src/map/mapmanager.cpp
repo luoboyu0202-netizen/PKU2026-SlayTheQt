@@ -4,7 +4,9 @@
 #include <QPushButton> // 👈 新增这一行，用来创建按钮组件
 #include <QPainter> // 👈 新增引入画笔工具
 #include <QPen>     // 👈 新增引入画笔样式（颜色、粗细）
-#include "..\entities\cards\testcard.h"
+#include "../logic/GlobalSaveData.h"
+#include "../logic/CardFactory.h"
+#include "../logic/RelicFactory.h"
 // 如果需要用到全局存档，可以在这里引入 GlobalSaveData.h
 
 MapManager::MapManager(QWidget *parent) : QWidget(parent) {
@@ -151,49 +153,63 @@ void MapManager::generateMapNodes() {
 }
 
 void MapManager::triggerBattle(const MapNode& clickedNode) {
-
-    // 1. 准备粮草：拼装 Context
+    // 1. 准备粮草：从全局仓库提取真实数据
     BattleContext context;
-    context.currentHp = 75;
-    context.maxHp = 80;
-    context.gold = 120;
-    context.maxEnergy = 3;
-    // 🔴 加入你的闪电霹雳卡！
-    // 注意：Card 派生类通常由 BattleEngine 管理生命周期，
-    // 这里 new 出来的对象，之后会在 BattleLauncher 的逻辑中被移交给 CardManager
-    context.currentDeck.append(new testcard());
+    GlobalSaveData* save = GlobalSaveData::getInstance();
 
-    // 🔴 关键修改：通过节点类型来决定遭遇战的敌人 ID
-    // 这样点击 Boss 节点就会触发 Boss 战，点击普通怪触发小怪战
+    context.currentHp = save->currentHp;
+    context.maxHp = save->maxHp;
+    context.gold = save->gold;
+    context.maxEnergy = save->maxEnergy;
+
+    // 🔴 核心重构：利用工厂，根据全局存的 ID 动态生成卡牌交由战斗引擎接管
+    for (const QString& cardId : save->deckIds) {
+        context.currentDeck.append(CardFactory::createCard(cardId, nullptr));
+    }
+
+    // 🔴 核心重构：利用工厂生成遗物
+    for (const QString& relicId : save->relicIds) {
+        context.relics.append(RelicFactory::createRelic(relicId, nullptr));
+    }
+
+    // 根据节点类型决定遭遇战的敌人 ID
     if (clickedNode.type == "Boss") context.enemySeedOrId = "Boss_Slime";
     else if (clickedNode.type == "Elite") context.enemySeedOrId = "Elite_Slime";
     else context.enemySeedOrId = "Slime_Squad";
 
     BattleLauncher* launcher = new BattleLauncher(this);
 
-    // 2. 监听战报：绑定 Signal
+    // 2. 监听战报：战斗结束后，把数据写回全局仓库
     connect(launcher, &BattleLauncher::battleConcluded,
             this, [this, launcher, clickedNode](BattleResult result) {
 
                 if (!result.isVictory) {
                     qDebug() << "主角阵亡，弹出 GameOver 界面!";
                 } else {
-                    qDebug() << "战斗胜利！";
+                    qDebug() << "战斗胜利！准备同步全局数据...";
+                    GlobalSaveData* save = GlobalSaveData::getInstance();
 
-                    // 3. 标记状态并刷新地图
+                    // 🟢 将战后的真实血量和金币写回全局！
+                    save->currentHp = result.currentHp;
+                    save->gold = result.gold;
+                    save->maxEnergy=result.maxEnergy;
+                    save->maxHp=result.maxHp;
+
+
+                    // 3. 标记状态并刷新大地图进度
                     m_currentLayer = clickedNode.layer;
                     m_currentNodeId = clickedNode.id;
                     m_visitedNodes.append(clickedNode.id);
 
-                    refreshNodeStates(); // 重新渲染状态
+                    refreshNodeStates();
                 }
 
                 launcher->deleteLater();
             });
 
+    // 3. 吹响号角
     launcher->launch(context);
 }
-
 // ==========================================
 // 绘制大地图底层的交叉连线
 // ==========================================
