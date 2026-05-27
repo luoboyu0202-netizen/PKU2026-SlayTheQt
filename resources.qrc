@@ -48,5 +48,7 @@
         <file>resources/images/events/Campfire/Smith.png</file>
         <file>resources/images/events/Campfire/Rest.png</file>
         <file>resources/images/events/Campfire/GO_ahead.png</file>
+        <file>resources/images/events/Campfire/Bonfire.png</file>
+        <file>resources/images/events/Campfire/rear_side-removebg-preview.png</file>
     </qresource>
 </RCC>

@@ -39,6 +39,15 @@ CampfireView::CampfireView(Player* player, CardManager* cardManager,
 }
 
 void CampfireView::setupContent() {
+    // 1. 切换为真正的越肩视角人物
+    QPixmap otsPixmap(":/resources/images/events/Campfire/rear_side-removebg-preview.png");
+    if (!otsPixmap.isNull()) {
+        // 放大角色，使其占据左侧近景
+        m_playerImage->setPixmap(otsPixmap.scaled(1100, 1100, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        m_playerImage->setPos(-100, 240); 
+        m_playerImage->setZValue(120); // 提升 Z-Order，使其在某些烟雾之上或与其交互
+    }
+
     createCampfireVisual();
     showDarkOverlay();
 
@@ -100,24 +109,36 @@ void CampfireView::setupContent() {
 // ============================================================
 void CampfireView::createCampfireVisual() {
     auto* rng = QRandomGenerator::global();
-    const QPointF fireCenter(1380, 880); // 画面右下侧，更符合理想图构图
+    const QPointF fireCenter(1380, 880); 
 
-    // ---- 上半纯暗面 ----
+    // ---- 1. 背景底色 ----
     auto* upperDark = new QGraphicsRectItem(0, 0, 1920, 1080);
-    QLinearGradient upperGrad(0, 0, 0, 900);
-    upperGrad.setColorAt(0.0, QColor(10, 8, 6));
-    upperGrad.setColorAt(0.6, QColor(25, 20, 15));
-    upperGrad.setColorAt(1.0, QColor(65, 50, 35));
+    QLinearGradient upperGrad(0, 0, 0, 1080);
+    upperGrad.setColorAt(0.0, QColor(5, 5, 8));
+    upperGrad.setColorAt(0.7, QColor(20, 15, 12));
+    upperGrad.setColorAt(1.0, QColor(40, 30, 25));
     upperDark->setBrush(upperGrad);
     upperDark->setPen(Qt::NoPen);
     upperDark->setZValue(0);
     m_scene->addItem(upperDark);
     m_fireItems.append(upperDark);
 
-    // ---- 下半石板地面 (铺满底部) ----
+    // ---- 2. 引入真正的火堆图片 (Bonfire.png) - 保持静态且进一步缩小 ----
+    QPixmap firePixmap(":/resources/images/events/Campfire/Bonfire.png");
+    if (!firePixmap.isNull()) {
+        // 进一步缩小火焰大小 (从 700x560 -> 550x440)
+        auto* fireImg = new QGraphicsPixmapItem(firePixmap.scaled(550, 440, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        // 重新对齐位置（底部中心对准 fireCenter）
+        fireImg->setPos(fireCenter.x() - 275, fireCenter.y() - 420);
+        fireImg->setZValue(4); 
+        m_scene->addItem(fireImg);
+        m_fireItems.append(fireImg);
+    }
+
+    // ---- 3. 下半地面 ----
     QPainterPath groundPath;
     for (int row = 0; row < 6; ++row) {
-        qreal yBase = 720 + row * 80;
+        qreal yBase = 750 + row * 70;
         for (int col = 0; col < 16; ++col) {
             qreal xBase = col * 160 - 100 + (row % 2) * 80;
             qreal jx = rng->bounded(20) - 10;
@@ -132,13 +153,13 @@ void CampfireView::createCampfireVisual() {
         }
     }
     auto* ground = new QGraphicsPathItem(groundPath);
-    ground->setBrush(QColor(60, 50, 40));
-    ground->setPen(QPen(QColor(20, 15, 10), 2));
+    ground->setBrush(QColor(40, 35, 30));
+    ground->setPen(QPen(QColor(15, 12, 10), 2));
     ground->setZValue(1);
     m_scene->addItem(ground);
     m_fireItems.append(ground);
 
-    // ---- 地面火光染色 ----
+    // ---- 4. 地面火光染色 ----
     auto* floorGlow = new QGraphicsEllipseItem(-600, -80, 1200, 250);
     QRadialGradient floorFill(0, 0, 600);
     floorFill.setColorAt(0.0, QColor(255, 180, 70, 160));
@@ -152,173 +173,21 @@ void CampfireView::createCampfireVisual() {
     m_scene->addItem(floorGlow);
     m_fireItems.append(floorGlow);
 
-    // ---- 木柴 (居中对齐 fireCenter) ----
-    auto addLog = [this](qreal cx, qreal cy, qreal rot, qreal w, qreal h,
-                         const QColor& base, const QColor& topRim, const QColor& burnGlow) {
-        // ... (保持 logPath 逻辑不变)
-        QPainterPath logPath;
-        qreal hw = w / 2, hh = h / 2, r = hh * 0.7;
-        logPath.moveTo(-hw + 15, -hh);
-        logPath.cubicTo(-hw + 5, -hh + 3, -hw, -hh + 8, -hw, -hh + r);
-        logPath.lineTo(-hw, hh - r);
-        logPath.cubicTo(-hw, hh - 3, -hw + 8, hh, -hw + 18, hh);
-        logPath.lineTo(hw - 12, hh);
-        logPath.cubicTo(hw - 3, hh, hw + 2, hh - 5, hw, hh - r);
-        logPath.lineTo(hw, -hh + r);
-        logPath.cubicTo(hw + 3, -hh + 6, hw - 5, -hh + 2, hw - 10, -hh);
-        logPath.closeSubpath();
-
-        auto* log = new QGraphicsPathItem(logPath);
-        QLinearGradient logFill(0, -hh, 0, hh);
-        logFill.setColorAt(0.0, burnGlow);
-        logFill.setColorAt(0.15, topRim);
-        logFill.setColorAt(0.45, base.lighter(120));
-        logFill.setColorAt(0.75, base);
-        logFill.setColorAt(1.0, base.darker(170));
-        log->setBrush(logFill);
-        log->setPen(QPen(base.darker(200), 2.5));
-        log->setPos(cx, cy);
-        log->setRotation(rot);
-        log->setZValue(5);
-        m_scene->addItem(log);
-        m_fireItems.append(log);
-    };
-
-    // 木柴位置相对于 fireCenter 对齐
-    addLog(fireCenter.x() - 100, fireCenter.y() + 20, -18, 380, 42, QColor(88, 48, 24), QColor(175, 108, 60), QColor(255, 195, 85, 175));
-    addLog(fireCenter.x() + 80, fireCenter.y() + 28, 15, 360, 38, QColor(75, 42, 20), QColor(158, 95, 50), QColor(245, 175, 65, 160));
-    addLog(fireCenter.x() - 40, fireCenter.y() + 25, -5, 400, 40,  QColor(80, 45, 23), QColor(162, 100, 54), QColor(250, 185, 75, 170));
-    addLog(fireCenter.x() + 120, fireCenter.y() + 18, 25, 340, 35, QColor(68, 38, 16), QColor(148, 88, 42), QColor(240, 168, 55, 155));
-    addLog(fireCenter.x() + 20, fireCenter.y() + 32, -28, 350, 38, QColor(62, 35, 14), QColor(142, 82, 40), QColor(235, 160, 50, 150));
-
-    // ---- 单中心火焰 (多层，从木柴上升起) ----
-    auto makeFlame = [](qreal w, qreal h) {
-        QPainterPath path;
-        path.moveTo(w * 0.50, 0);
-        path.cubicTo(w * 0.18, h * 0.12, w * 0.03, h * 0.38, w * 0.12, h * 0.62);
-        path.cubicTo(w * 0.18, h * 0.52, w * 0.38, h * 0.72, w * 0.46, h * 1.0);
-        path.cubicTo(w * 0.58, h * 0.70, w * 0.72, h * 0.52, w * 0.68, h * 0.28);
-        path.cubicTo(w * 0.80, h * 0.42, w * 0.94, h * 0.22, w * 0.50, 0);
-        path.closeSubpath();
-        return path;
-    };
-
-    // 火焰层从下往上 (外层大→核心小, 基底对齐fireCenter.y=790)
-    // 外层 - 暗橙 (h=440, base at 790)
-    auto* fOuter = new QGraphicsPathItem(makeFlame(360, 440));
-    fOuter->setBrush(QColor(200, 100, 35, 145));
-    fOuter->setPen(Qt::NoPen);
-    fOuter->setPos(fireCenter.x() - 180, fireCenter.y() - 440);
-    fOuter->setTransformOriginPoint(180, 440);
-    fOuter->setZValue(7);
-    auto* foBlur = new QGraphicsBlurEffect(); foBlur->setBlurRadius(22);
-    fOuter->setGraphicsEffect(foBlur);
-    m_scene->addItem(fOuter);
-    m_fireItems.append(fOuter);
-
-    // 中层 - 亮橙 (h=340, base at 790)
-    auto* fMid1 = new QGraphicsPathItem(makeFlame(260, 340));
-    fMid1->setBrush(QColor(238, 155, 60, 180));
-    fMid1->setPen(Qt::NoPen);
-    fMid1->setPos(fireCenter.x() - 130, fireCenter.y() - 340);
-    fMid1->setTransformOriginPoint(130, 340);
-    fMid1->setZValue(8);
-    auto* fm1Blur = new QGraphicsBlurEffect(); fm1Blur->setBlurRadius(14);
-    fMid1->setGraphicsEffect(fm1Blur);
-    m_scene->addItem(fMid1);
-    m_fireItems.append(fMid1);
-
-    // 中上层 - 金黄 (h=250, base at 790)
-    auto* fMid2 = new QGraphicsPathItem(makeFlame(180, 250));
-    fMid2->setBrush(QColor(252, 215, 110, 190));
-    fMid2->setPen(Qt::NoPen);
-    fMid2->setPos(fireCenter.x() - 90, fireCenter.y() - 250);
-    fMid2->setTransformOriginPoint(90, 250);
-    fMid2->setZValue(9);
-    auto* fm2Blur = new QGraphicsBlurEffect(); fm2Blur->setBlurRadius(9);
-    fMid2->setGraphicsEffect(fm2Blur);
-    m_scene->addItem(fMid2);
-    m_fireItems.append(fMid2);
-
-    // 内层 - 亮黄白 (h=170, base at 790)
-    auto* fInner = new QGraphicsPathItem(makeFlame(110, 170));
-    fInner->setBrush(QColor(255, 245, 180, 205));
-    fInner->setPen(Qt::NoPen);
-    fInner->setPos(fireCenter.x() - 55, fireCenter.y() - 170);
-    fInner->setTransformOriginPoint(55, 170);
-    fInner->setZValue(10);
-    auto* fiBlur = new QGraphicsBlurEffect(); fiBlur->setBlurRadius(6);
-    fInner->setGraphicsEffect(fiBlur);
-    m_scene->addItem(fInner);
-    m_fireItems.append(fInner);
-
-    // 核心 - 纯白热点 (火焰中上部)
-    auto* fCore = new QGraphicsEllipseItem(-14, -14, 28, 28);
-    fCore->setBrush(QColor(255, 255, 252, 240));
-    fCore->setPen(Qt::NoPen);
-    fCore->setPos(fireCenter.x() + 3, fireCenter.y() - 100);
-    fCore->setZValue(11);
-    auto* fcBlur = new QGraphicsBlurEffect(); fcBlur->setBlurRadius(5);
-    fCore->setGraphicsEffect(fcBlur);
-    m_scene->addItem(fCore);
-    m_fireItems.append(fCore);
-
-    // ---- 火焰动画 ----
-    auto addFlameMotion = [this](QGraphicsItem* item, qreal deg, qreal scaleAmp, int dur) {
-        auto* anim = new QVariantAnimation(this);
-        anim->setDuration(dur);
-        anim->setLoopCount(-1);
-        anim->setKeyValueAt(0.0, QPointF(-deg, 1.0));
-        anim->setKeyValueAt(0.33, QPointF(deg * 0.5, 1.0 + scaleAmp));
-        anim->setKeyValueAt(0.66, QPointF(-deg * 0.7, 1.0 - scaleAmp * 0.3));
-        anim->setKeyValueAt(1.0, QPointF(-deg, 1.0));
-        anim->setEasingCurve(QEasingCurve::InOutSine);
-        connect(anim, &QVariantAnimation::valueChanged, this, [item](const QVariant& v) {
-            const QPointF p = v.toPointF();
-            item->setRotation(p.x());
-            item->setScale(p.y());
-        });
-        anim->start();
-        m_fireAnimations.append(anim);
-    };
-
-    addFlameMotion(fOuter, 2.0, 0.03, 1050);
-    addFlameMotion(fMid1, -2.5, 0.045, 850);
-    addFlameMotion(fMid2, 2.2, 0.06, 700);
-    addFlameMotion(fInner, -1.8, 0.075, 580);
-    addFlameMotion(fCore, 1.0, 0.10, 480);
-
-    // ---- 环境光晕 (大幅提升alpha) ----
-    auto* ambGlow = new QGraphicsEllipseItem(-650, -480, 1300, 960);
-    QRadialGradient ambFill(0, 0, 650);
-    ambFill.setColorAt(0.0, QColor(245, 220, 175, 90));
-    ambFill.setColorAt(0.25, QColor(200, 160, 110, 55));
-    ambFill.setColorAt(0.5, QColor(140, 100, 60, 20));
-    ambFill.setColorAt(0.75, QColor(60, 40, 20, 5));
+    // ---- 5. 环境光晕 ----
+    auto* ambGlow = new QGraphicsEllipseItem(-700, -500, 1400, 1000);
+    QRadialGradient ambFill(0, 0, 700);
+    ambFill.setColorAt(0.0, QColor(245, 220, 175, 70));
     ambFill.setColorAt(1.0, QColor(0, 0, 0, 0));
     ambGlow->setBrush(ambFill);
     ambGlow->setPen(Qt::NoPen);
-    ambGlow->setPos(fireCenter.x(), fireCenter.y() - 50);
+    ambGlow->setPos(fireCenter.x(), fireCenter.y() - 100);
     ambGlow->setZValue(3);
     m_scene->addItem(ambGlow);
     m_fireItems.append(ambGlow);
-    makePulse(this, ambGlow, 0.04, 1400)->start();
+    makePulse(this, ambGlow, 0.05, 1500)->start();
 
-    // 右侧额外暖光（给玩家打背光）
-    auto* sideGlow = new QGraphicsEllipseItem(-380, -350, 760, 700);
-    QRadialGradient sideFill(0, 0, 380);
-    sideFill.setColorAt(0.0, QColor(210, 145, 75, 60));
-    sideFill.setColorAt(0.5, QColor(150, 95, 45, 20));
-    sideFill.setColorAt(1.0, QColor(0, 0, 0, 0));
-    sideGlow->setBrush(sideFill);
-    sideGlow->setPen(Qt::NoPen);
-    sideGlow->setPos(fireCenter.x() - 140, fireCenter.y() - 60);
-    sideGlow->setZValue(3);
-    m_scene->addItem(sideGlow);
-    m_fireItems.append(sideGlow);
-
-    // ---- 火星 (12个) ----
-    for (int i = 0; i < 12; ++i) {
+    // ---- 6. 火星 (15个) ----
+    for (int i = 0; i < 15; ++i) {
         qreal size = 2 + rng->bounded(3);
         auto* ember = new QGraphicsEllipseItem(-size / 2, -size / 2, size, size);
         ember->setBrush(QColor(255, 240, 190, 175));
@@ -349,6 +218,8 @@ void CampfireView::createCampfireVisual() {
         m_fireAnimations.append(floatAnim);
     }
 }
+
+
 
 // ============================================================
 // 休息
@@ -546,14 +417,21 @@ QList<Card*> CampfireView::allUpgradableCards() const {
 }
 
 void CampfireView::showCardSelector() {
-    QList<Card*> candidates = allUpgradableCards();
+    // 调暗背景并提升遮罩层
+    showDarkOverlay();
+    if (m_darkOverlay) {
+        m_darkOverlay->setBrush(QColor(0, 0, 0, 200)); // 进一步加深背景
+        m_darkOverlay->setZValue(150); 
+    }
 
     m_cardSelectPrompt = new QGraphicsTextItem("选择一张卡牌升级");
-    m_cardSelectPrompt->setDefaultTextColor(Qt::white);
-    m_cardSelectPrompt->setFont(QFont("Microsoft YaHei", 22, QFont::Bold));
-    m_cardSelectPrompt->setZValue(100);
+    m_cardSelectPrompt->setDefaultTextColor(QColor(255, 230, 150)); // 柔和的金黄色
+    m_cardSelectPrompt->setFont(QFont("Microsoft YaHei", 28, QFont::Bold));
+    m_cardSelectPrompt->setZValue(160);
     m_scene->addItem(m_cardSelectPrompt);
     m_cardSelectPrompt->setPos(960 - m_cardSelectPrompt->boundingRect().width() / 2, 140);
+
+    QList<Card*> candidates = allUpgradableCards();
 
     const int cols = qMin(candidates.size(), 5);
     const int cardW = 170;
@@ -565,7 +443,7 @@ void CampfireView::showCardSelector() {
         int col = i % cols;
         int row = i / cols;
         item->setPos(startX + col * cardW + cardW / 2, 320 + row * (cardH + 20));
-        item->setZValue(100);
+        item->setZValue(160); // 确保卡牌在遮罩之上
         m_scene->addItem(item);
         m_cardDisplayItems.append(item);
 
@@ -580,17 +458,18 @@ void CampfireView::showCardSelector() {
 
     m_confirmBtn = new TextButton("确认升级", 200, 55);
     m_confirmBtn->setPos(960 - 120, 900);
-    m_confirmBtn->setZValue(100);
+    m_confirmBtn->setZValue(160);
     m_confirmBtn->hide();
     m_scene->addItem(m_confirmBtn);
     connect(m_confirmBtn, &TextButton::clicked, this, &CampfireView::confirmUpgrade);
 
     m_cancelBtn = new TextButton("取消", 200, 55);
     m_cancelBtn->setPos(960 + 120, 900);
-    m_cancelBtn->setZValue(100);
+    m_cancelBtn->setZValue(160);
     m_scene->addItem(m_cancelBtn);
     connect(m_cancelBtn, &TextButton::clicked, this, &CampfireView::cancelUpgrade);
 }
+
 
 void CampfireView::confirmUpgrade() {
     if (!m_selectedCard) return;
@@ -601,7 +480,9 @@ void CampfireView::confirmUpgrade() {
     if (m_confirmBtn) { m_scene->removeItem(m_confirmBtn); delete m_confirmBtn; m_confirmBtn = nullptr; }
     if (m_cancelBtn) { m_scene->removeItem(m_cancelBtn); delete m_cancelBtn; m_cancelBtn = nullptr; }
 
-    if (m_overlayText) m_overlayText->hide();
+    // 🔴 关键修复：确认升级后彻底隐藏蒙版，恢复原始亮度
+    hideDarkOverlay();
+    
     runUpgradeAnimation(m_selectedCard);
 }
 

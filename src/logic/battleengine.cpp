@@ -94,13 +94,6 @@ void BattleEngine::refreshEnemyIntent() {
 
 void BattleEngine::startBattle() {
     qDebug() << "[Engine] Battle Started!";
-    if (m_relicManager) {
-        for (Relic* r : m_relicManager->getRelics()) {
-            if (r) {
-                r->onBattleStart(); // 🎒 准备背包和 ⚓ 锚 此时会疯狂响应！
-            }
-        }
-    }
     startPlayerTurn();
 }
 
@@ -156,26 +149,14 @@ bool BattleEngine::playCard(Card* card, Fighter* target) {
     // ==========================================================
     // 🔴【遗物系统】：通知管家卡牌打出了！
     // ==========================================================
-
-
-    // ==========================================================
-    // 🔴【卡牌结算】：执行卡牌效果！
-    // ==========================================================
-    card->play(m_player, target, m_relicManager);
-
     if (m_relicManager) {
         m_relicManager->onCardPlayed(card);
     }
 
     // ==========================================================
-    // 📢 【新增：全局 UI 刷新通知！】
-    // 刚打完一张牌，遗物层数可能变了(钢笔尖到9层了)，力量可能变了。
-    // 立刻命令大管家：刷新手牌区的所有动态文本！
+    // 🔴【卡牌结算】：执行卡牌效果！
     // ==========================================================
-
-    if (m_cardManager) {
-        m_cardManager->refreshHandDynamicText(); // 🔴 完美调用！
-    }
+    card->play(m_player, target, m_relicManager);
 
     // ========================================================
     // 🔴【终极分流闸门】：合并重复代码，干净利落！
@@ -251,14 +232,6 @@ void BattleEngine::endPlayerTurn() {
         qDebug() << "[Engine] 金属化生效！玩家凭空获得了" << metallicizeAmount << "点格挡！";
 
         // 💡 果汁感预留：你甚至可以在这里 emit 一个信号，让 UI 给主角播放一个白光特效喵！
-    }
-
-    if (m_relicManager) {
-        for (Relic* r : m_relicManager->getRelics()) {
-            if (r) {
-                r->onTurnEnd(); // 🛡️ 奥利哈钢此时会进行无甲检测！
-            }
-        }
     }
 
 }
@@ -530,7 +503,6 @@ void BattleEngine::executeRevealedCard(Card* card, bool exhaustIt) {
 
     // 强行打出！此时卡牌内部的 play() 就能知道自己是被托管打出的了！
     card->play(m_player, target, m_relicManager);
-    triggerCardPlayedHooks(card);
 
     // 🔴【核心操作】：打完后立刻关闭，恢复正常！
     m_isAutoPlayingCard = false;
@@ -578,53 +550,4 @@ Fighter* BattleEngine::getRandomEnemyTarget() {
     // 🔴 极其完美的现代随机挑选算法
     int randomIndex = QRandomGenerator::global()->bounded(aliveEnemies.size());
     return aliveEnemies[randomIndex];
-}
-
-void BattleEngine::triggerCardPlayedHooks(Card* playedCard) {
-    if (!playedCard || !m_relicManager) return;
-
-    // 广播给遗物
-    for (Relic* r : m_relicManager->getRelics()) {
-        if (r) r->onCardPlayed(playedCard);
-    }
-
-    // 以后这里还可以加上：广播给能力/状态（StatusManager）
-    // 比如有的怪物有“你每打出一张牌它就加力量”的Buff，也全都在这里触发！
-}
-
-int BattleEngine::calculateSnapshotDamage(Fighter* source, Fighter* target, int baseDamage) {
-    if (!source || !target) return baseDamage; // 🔴 嫌疑人 A 在此！
-
-    int finalDamage = baseDamage;
-    StatusManager* srcStatus = source->getStatusManager();
-
-    // 1. 结算力量 (基础伤害 + 力量)
-    if (srcStatus) {
-        finalDamage += srcStatus->getStatus(StatusType::Strength);
-        if (finalDamage < 0) finalDamage = 0; // 保底
-    }
-
-    // 2. 攻击方减益：虚弱 (-25% 向下取整)
-    if (srcStatus && srcStatus->getStatus(StatusType::Weak) > 0) {
-        finalDamage = static_cast<int>(finalDamage * 0.75);
-    }
-
-    // ========================================================
-    // 🔴 3. 遗物介入！(哪怕是在手里预览没有目标，钢笔尖也能翻倍了！)
-    // ========================================================
-    if (m_relicManager) {
-        for (Relic* r : m_relicManager->getRelics()) {
-            finalDamage = r->modifyAttackDamage(finalDamage);
-        }
-    }
-
-    // 4. 防御方减益：易伤 (+50% 向下取整)
-    // 🟢 修正：走到这里，如果 target 为空就不算易伤；如果拖拽到了怪头上，且有易伤，才乘 1.5！
-    if (target && target->getStatusManager()) {
-        if (target->getStatusManager()->getStatus(StatusType::Vulnerable) > 0) {
-            finalDamage = static_cast<int>(finalDamage * 1.50);
-        }
-    }
-
-    return finalDamage > 0 ? finalDamage : 0;
 }

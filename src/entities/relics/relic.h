@@ -37,9 +37,6 @@ public:
     // 5. 当回合结束时触发（例如：水银沙漏）
     virtual void onTurnEnd() {}
 
-    QString getId() const { return m_id; } // 🔴 获取遗物ID，用于绑定图片
-    QString getDescription() const { return m_description; }
-
 signals:
     void counterChanged(int newCount);
     void relicActivated(); // 触发时的闪烁信号

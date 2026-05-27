@@ -20,6 +20,8 @@ SOURCES += \
     src/entities/fighter.cpp \
     src/entities/player.cpp \
     src/entities/statusmanager.cpp \
+    src/entities/relics/relicmanager.cpp \
+    src/entities/relics/RelicImplementations.cpp \
     src/logic/actions/action.cpp \
     src/logic/actions/damageaction.cpp \
     src/logic/actions/drawcardaction.cpp \
@@ -86,6 +88,7 @@ HEADERS += \
     src/entities/fighter.h \
     src/entities/player.h \
     src/entities/relics/PenNibRelic.h \
+    src/entities/relics/OrichalcumRelic.h \
     src/entities/relics/relic.h \
     src/entities/relics/relicmanager.h \
     src/entities/statusmanager.h \

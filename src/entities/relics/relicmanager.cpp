@@ -1,3 +1,3 @@
 #include "relicmanager.h"
 
-RelicManager::RelicManager() {}
+RelicManager::RelicManager(QObject* parent) : QObject(parent) {}
