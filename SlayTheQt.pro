@@ -11,11 +11,11 @@ INCLUDEPATH += $$PWD/src \
 
 # 目前项目里唯一的源文件（注意路径已经变成了 src/main.cpp）
 SOURCES += \
+    src/api/EventLauncher.cpp \
     src/api/battlelauncher.cpp \
     src/core/gamerng.cpp \
     src/core/objectfactory.cpp \
     src/core/savemanager.cpp \
-    src/entities/card.cpp \
     src/entities/enemy.cpp \
     src/entities/fighter.cpp \
     src/entities/player.cpp \
@@ -38,6 +38,12 @@ SOURCES += \
     src/ui/pileitem.cpp \
     src/ui/playeritem.cpp \
     src/ui/relictray.cpp \
+    src/ui/events/CampfireView.cpp \
+    src/ui/events/EventBaseView.cpp \
+    src/ui/events/IconButton.cpp \
+    src/ui/events/LeaveButton.cpp \
+    src/ui/events/SelectableCardItem.cpp \
+    src/ui/events/TextButton.cpp \
     src/ui/shuffleeffectitem.cpp \
     src/ui/statusiconitem.cpp \
     src/ui/topbar.cpp
@@ -45,6 +51,8 @@ SOURCES += \
 # 以后你每增加一个文件，Qt Creator 会自动往下面这几项里追加路径
 HEADERS += \
     src/api/BattleAPI.h \
+    src/api/EventAPI.h \
+    src/api/EventLauncher.h \
     src/api/battlelauncher.h \
     src/core/Serializable.h \
     src/core/gamerng.h \
@@ -77,9 +85,6 @@ HEADERS += \
     src/entities/enemy.h \
     src/entities/fighter.h \
     src/entities/player.h \
-    src/entities/relics/AnchorRelic.h \
-    src/entities/relics/BagOfPreparationRelic.h \
-    src/entities/relics/OrichalcumRelic.h \
     src/entities/relics/PenNibRelic.h \
     src/entities/relics/relic.h \
     src/entities/relics/relicmanager.h \
@@ -103,6 +108,12 @@ HEADERS += \
     src/ui/pileitem.h \
     src/ui/playeritem.h \
     src/ui/relictray.h \
+    src/ui/events/CampfireView.h \
+    src/ui/events/EventBaseView.h \
+    src/ui/events/IconButton.h \
+    src/ui/events/LeaveButton.h \
+    src/ui/events/SelectableCardItem.h \
+    src/ui/events/TextButton.h \
     src/ui/shuffleeffectitem.h \
     src/ui/statusiconitem.h \
     src/ui/topbar.h
@@ -113,7 +124,6 @@ RESOURCES += \
     resources.qrc
 
 DISTFILES += \
-    .gitignore \
     resources/images/attack.png \
     resources/images/attack_debuff.png \
     resources/images/buff.png \
