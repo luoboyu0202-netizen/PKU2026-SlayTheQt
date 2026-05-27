@@ -16,7 +16,8 @@ void BattleLauncher::launch(const BattleContext& context) {
     qDebug() << "[API] Launching battle with enemy:" << context.enemySeedOrId;
 
     // 1. 将外部的冷数据 (Context)，实例化为我们战斗模块内部的活生生肉体
-    Player* player = new Player("铁甲战士", context.currentHp, context.maxEnergy, context.gold);
+    Player* player = new Player("铁甲战士", context.maxHp, context.maxEnergy, context.gold);
+    player->setHp(context.currentHp);
 
     // ========================================================
     // 🔴【群殴编制重构】：把生成的怪物装进大军列表里！
@@ -60,11 +61,12 @@ void BattleLauncher::launch(const BattleContext& context) {
     connect(m_engine, &BattleEngine::battleEnded, this, [this, player, context, relicManager](bool victory) {
         BattleResult result;
         result.isVictory = victory;
-        result.remainingHp = player->getHp();
-        result.currentGold = player->getGold();
-
+        result.currentHp = player->getHp();
+        result.gold = player->getGold();
+        result.maxHp=player->getMaxHp();
+        result.maxEnergy=player->getMaxEnergy();
         // 现在用复印下来的 context 就绝对安全了喵！
-        result.battledRelics = context.relics;
+        result.relics = context.relics;
 
         m_view->close();
         emit battleConcluded(result);

@@ -31,6 +31,7 @@
 #include "entities/cards/WoundCard.h"
 #include "entities/cards/SlimedCard.h"
 
+#include "entities/cards/testcard.h"
 
 // ========================================================
 // 📚 全图鉴卡池 (仅包含玩家能正常获得/随机抽出的牌)
@@ -94,6 +95,8 @@ Card* CardFactory::createCard(const QString& cardId, QObject* parent) {
     if (cardId == "card_burn") return new BurnCard(parent);
     if (cardId == "card_wound") return new WoundCard(parent);
     if (cardId == "card_slimed") return new SlimedCard(parent);
+
+    if (cardId == "card_test") return new testcard(parent);
 
     // ========================================================
     // 🛑 终极防崩溃保底

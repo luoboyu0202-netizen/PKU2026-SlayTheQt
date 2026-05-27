@@ -11,6 +11,7 @@ public:
     int getEnergy() const { return m_energy; }
     int getMaxEnergy() const { return m_maxEnergy; }
     int getGold() const { return m_gold; }
+    int getMaxHp() const { return m_maxHp;    }
 
     // 玩家专属操作接口
     bool useEnergy(int amount); // 返回 false 表示费用不足

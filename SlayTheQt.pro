@@ -22,6 +22,7 @@ SOURCES += \
     src/logic/cardmanager.cpp \
     src/logic/relicfactory.cpp \
     src/main.cpp \
+    src/map/mapmanager.cpp \
     src/ui/RelicItem.cpp \
     src/ui/battlescene.cpp \
     src/ui/battleview.cpp \
@@ -66,6 +67,7 @@ HEADERS += \
     src/entities/cards/card.h \
     src/entities/cards/defendcard.h \
     src/entities/cards/strikecard.h \
+    src/entities/cards/testcard.h \
     src/entities/enemy.h \
     src/entities/fighter.h \
     src/entities/player.h \
@@ -81,6 +83,8 @@ HEADERS += \
     src/logic/cardfactory.h \
     src/logic/cardmanager.h \
     src/logic/enemyfactory.h \
+    src/logic/globalsavedata.h \
+    src/map/mapmanager.h \
     src/logic/relicfactory.h \
     src/ui/ConfirmButton.h \
     src/ui/RelicItem.h \
