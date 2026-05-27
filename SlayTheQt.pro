@@ -75,6 +75,7 @@ HEADERS += \
     src/entities/cards/card.h \
     src/entities/cards/defendcard.h \
     src/entities/cards/strikecard.h \
+    src/entities/cards/testcard.h \
     src/entities/enemy.h \
     src/entities/fighter.h \
     src/entities/player.h \
