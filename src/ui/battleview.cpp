@@ -82,8 +82,7 @@ void BattleView::initStageInfrastructure() {
     m_scene->addItem(m_topBar);
 
     m_relicTray = new RelicTray();
-    m_relicTray->setPos(10, 70);
-    m_relicTray->setZValue(5000);
+    m_relicTray->setPos(850, 6);
     m_scene->addItem(m_relicTray);
 
     m_drawPileUI = new PileItem(QStringLiteral("抽牌堆"));

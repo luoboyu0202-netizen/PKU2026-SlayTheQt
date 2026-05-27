@@ -52,5 +52,17 @@
         <file>resources/images/events/Chest/Chest_open.png</file>
         <file>resources/images/events/Chest/Background.png</file>
         <file>resources/images/events/Chest/Skip-055246b5-b7d6-46de-9fe4-8d4af5c814cc.jpg</file>
+        <file>resources/images/events/Campfire/Bonfire.jpg</file>
+        <file>resources/images/events/Campfire/Bonfire.png</file>
+        <file>resources/images/events/Campfire/rear_side-removebg-preview.png</file>
+        <file>resources/images/events/Campfire/rear_side.png</file>
+        <file>resources/images/events/Merchant/merchant.png</file>
+        <file>resources/images/events/Merchant/GO_ahead.png</file>
+        <file>resources/images/events/Merchant/arm.png</file>
+        <file>resources/images/events/Merchant/carpet.png</file>
+        <file>resources/images/events/Merchant/exit.png</file>
+        <file>resources/images/events/Merchant/label.png</file>
+        <file>resources/images/events/Merchant/remove.png</file>
+        <file>resources/images/events/Merchant/soldout.jpeg</file>
     </qresource>
 </RCC>

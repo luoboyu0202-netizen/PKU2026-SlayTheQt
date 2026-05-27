@@ -1,7 +1,6 @@
 #pragma once
 #include <QGraphicsObject>
 #include "entities/relics/Relic.h"
-#include <QPixmap> // 🔴 新增：引入贴图类
 
 class RelicItem : public QGraphicsObject {
     Q_OBJECT
@@ -14,5 +13,4 @@ public:
 private:
     Relic* m_logicRelic;
     int m_displayCounter;
-    QPixmap m_pixmap; // 🔴 新增：专属贴图变量
 };

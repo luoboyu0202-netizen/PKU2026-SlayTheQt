@@ -104,11 +104,6 @@ public:
     // 供卡牌查询的接口
     bool isAutoPlayingCard() const { return m_isAutoPlayingCard; }
 
-    // 专门用来通知全场“某张牌刚刚结算完毕”
-    void triggerCardPlayedHooks(Card* playedCard);
-
-    int calculateSnapshotDamage(Fighter* source, Fighter* target, int baseDamage);
-
 signals:
     void turnStarted(bool isPlayerTurn);
     void battleEnded(bool isVictory);

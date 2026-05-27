@@ -37,6 +37,9 @@ protected:
     CardManager* m_cardManager;
     RelicManager* m_relicManager;
 
+    QGraphicsPixmapItem* m_playerImage;
+    QPixmap m_playerPixmap;
+
     // 遮罩层（子类可操作文字内容）
     QGraphicsRectItem* m_darkOverlay = nullptr;
     QGraphicsTextItem* m_overlayText = nullptr;

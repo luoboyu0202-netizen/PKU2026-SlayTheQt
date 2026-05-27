@@ -8,7 +8,7 @@ class Card;
 class RelicManager : public QObject {
     Q_OBJECT
 public:
-    explicit RelicManager(QObject* parent = nullptr) : QObject(parent) {}
+    explicit RelicManager(QObject* parent = nullptr);
 
     void addRelic(Relic* relic) {
         relic->setParent(this);

@@ -44,6 +44,8 @@ SOURCES += \
     src/ui/events/CampfireView.cpp \
     src/ui/events/ChestView.cpp \
     src/ui/events/EventBaseView.cpp \
+    src/ui/events/MerchantView.cpp \
+    src/ui/events/ShopCardItem.cpp \
     src/ui/events/IconButton.cpp \
     src/ui/events/LeaveButton.cpp \
     src/ui/events/RelicPopupWidget.cpp \
@@ -118,6 +120,8 @@ HEADERS += \
     src/ui/events/CampfireView.h \
     src/ui/events/ChestView.h \
     src/ui/events/EventBaseView.h \
+    src/ui/events/MerchantView.h \
+    src/ui/events/ShopCardItem.h \
     src/ui/events/IconButton.h \
     src/ui/events/LeaveButton.h \
     src/ui/events/RelicPopupWidget.h \
