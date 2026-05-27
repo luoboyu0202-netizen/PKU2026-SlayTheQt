@@ -16,16 +16,17 @@ SOURCES += \
     src/core/gamerng.cpp \
     src/core/objectfactory.cpp \
     src/core/savemanager.cpp \
+    src/entities/card.cpp \
     src/entities/enemy.cpp \
     src/entities/fighter.cpp \
     src/entities/player.cpp \
     src/entities/statusmanager.cpp \
-    src/logic/actions/action.cpp \
-    src/logic/actions/damageaction.cpp \
-    src/logic/actions/drawcardaction.cpp \
     src/logic/battleengine.cpp \
+    src/logic/cardfactory.cpp \
     src/logic/cardmanager.cpp \
+    src/logic/relicfactory.cpp \
     src/main.cpp \
+    src/map/mapmanager.cpp \
     src/ui/RelicItem.cpp \
     src/ui/battlescene.cpp \
     src/ui/battleview.cpp \
@@ -54,10 +55,6 @@ HEADERS += \
     src/api/EventAPI.h \
     src/api/EventLauncher.h \
     src/api/battlelauncher.h \
-    src/core/Serializable.h \
-    src/core/gamerng.h \
-    src/core/objectfactory.h \
-    src/core/savemanager.h \
     src/entities/cards/BarricadeCard.h \
     src/entities/cards/BloodlettingCard.h \
     src/entities/cards/BurnCard.h \
@@ -82,19 +79,22 @@ HEADERS += \
     src/entities/cards/card.h \
     src/entities/cards/defendcard.h \
     src/entities/cards/strikecard.h \
+    src/entities/cards/testcard.h \
     src/entities/enemy.h \
     src/entities/fighter.h \
     src/entities/player.h \
     src/entities/relics/PenNibRelic.h \
+    src/entities/relics/VajraRelic.h \
     src/entities/relics/relic.h \
     src/entities/relics/relicmanager.h \
     src/entities/statusmanager.h \
-    src/logic/actions/action.h \
-    src/logic/actions/damageaction.h \
-    src/logic/actions/drawcardaction.h \
     src/logic/battleengine.h \
+    src/logic/cardfactory.h \
     src/logic/cardmanager.h \
     src/logic/enemyfactory.h \
+    src/logic/globalsavedata.h \
+    src/map/mapmanager.h \
+    src/logic/relicfactory.h \
     src/ui/ConfirmButton.h \
     src/ui/RelicItem.h \
     src/ui/battlescene.h \
