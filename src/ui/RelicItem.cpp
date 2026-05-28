@@ -73,7 +73,7 @@ void RelicItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         QFont font = painter->font();
         font.setPixelSize(12);
         painter->setFont(font);
-        painter->drawText(boundingRect(), Qt::AlignCenter, m_logicRelic->getName().left(1));
+        painter->drawText(boundingRect(), Qt::AlignCenter, m_logicRelic->getName().left(3));
     }
 
     // ========================================================

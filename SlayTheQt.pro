@@ -4,7 +4,6 @@ CONFIG += c++17
 
 # 核心：告诉 Qt 去哪里找你写好的头文件
 INCLUDEPATH += $$PWD/src \
-               $$PWD/src/core \
                $$PWD/src/logic \
                $$PWD/src/entities \
                $$PWD/src/ui
@@ -13,9 +12,6 @@ INCLUDEPATH += $$PWD/src \
 SOURCES += \
     src/api/EventLauncher.cpp \
     src/api/battlelauncher.cpp \
-    src/core/gamerng.cpp \
-    src/core/objectfactory.cpp \
-    src/core/savemanager.cpp \
     src/entities/card.cpp \
     src/entities/enemy.cpp \
     src/entities/fighter.cpp \
@@ -37,6 +33,7 @@ SOURCES += \
     src/ui/endturnbutton.cpp \
     src/ui/enemyitem.cpp \
     src/ui/energywidget.cpp \
+    src/ui/gamewindow.cpp \
     src/ui/handlayoutmanager.cpp \
     src/ui/pileitem.cpp \
     src/ui/playeritem.cpp \
@@ -49,6 +46,7 @@ SOURCES += \
     src/ui/events/RelicPopupWidget.cpp \
     src/ui/events/SelectableCardItem.cpp \
     src/ui/events/TextButton.cpp \
+    src/ui/rewardscreen.cpp \
     src/ui/shuffleeffectitem.cpp \
     src/ui/statusiconitem.cpp \
     src/ui/topbar.cpp
@@ -111,6 +109,7 @@ HEADERS += \
     src/ui/endturnbutton.h \
     src/ui/enemyitem.h \
     src/ui/energywidget.h \
+    src/ui/gamewindow.h \
     src/ui/handlayoutmanager.h \
     src/ui/pileitem.h \
     src/ui/playeritem.h \
@@ -123,6 +122,7 @@ HEADERS += \
     src/ui/events/RelicPopupWidget.h \
     src/ui/events/SelectableCardItem.h \
     src/ui/events/TextButton.h \
+    src/ui/rewardscreen.h \
     src/ui/shuffleeffectitem.h \
     src/ui/statusiconitem.h \
     src/ui/topbar.h

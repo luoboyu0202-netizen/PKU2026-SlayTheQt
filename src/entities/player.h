@@ -28,6 +28,13 @@ public:
     // 【放血】是“失去生命”，不能用普通的 takeDamage（会扣格挡）。
     // 如果你的 Fighter 类里没有 loseHp，建议在这里或者 Fighter 里补上一个！
     void loseHp(int amount);
+    void setGold(int newGold){
+        if (m_gold != newGold) {
+            m_gold = newGold;
+            // 🔴 极其关键的灵魂一吼！如果不加这句，TopBar 永远是个瞎子！
+            emit goldChanged(m_gold);
+        }
+    }
 
 signals:
     void energyChanged(int currentEnergy, int maxEnergy);

@@ -19,6 +19,7 @@ public:
     int getMaxHp() const { return m_maxHp; }
     int getBlock() const { return m_block; }
     bool isDead() const { return m_isDead; }
+    void setMaxHp(int hp){ m_maxHp=hp; }
 
     // 核心战斗数据操作接口
     virtual void takeDamage(int amount);

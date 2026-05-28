@@ -8,75 +8,84 @@ BattleLauncher::BattleLauncher(QObject* parent)
     : QObject(parent), m_view(nullptr), m_engine(nullptr) {}
 
 BattleLauncher::~BattleLauncher() {
-    if (m_view) delete m_view;
-    if (m_engine) delete m_engine;
+    // 🟢 析构函数保持清空，全靠 Qt 父子树自动管理！
 }
 
-void BattleLauncher::launch(const BattleContext& context) {
-    qDebug() << "[API] Launching battle with enemy:" << context.enemySeedOrId;
+BattleView* BattleLauncher::launch(const BattleContext& context) {
+    m_view = new BattleView();
 
-    // 1. 将外部的冷数据 (Context)，实例化为我们战斗模块内部的活生生肉体
     Player* player = new Player("铁甲战士", context.maxHp, context.maxEnergy, context.gold);
     player->setHp(context.currentHp);
+    player->setParent(m_view);
 
-    // ========================================================
-    // 🔴【群殴编制重构】：把生成的怪物装进大军列表里！
-    // ========================================================
-    // ========================================================
-    // 🟢 现在你直接呼叫遭遇战工厂，一键生成整编军团！
-    // 假设你的 context.enemySeedOrId 传进来的是 "Slime_Squad"
-    // ========================================================
-    QList<Enemy*> enemyList = EnemyFactory::createEncounter("Slime_Squad");
-
-    // 然后把这支军队塞进大脑里（假设你的 BattleEngine 有一个初始化或者塞入敌人的接口喵）
-    // 比如：m_engine->initBattle(player, enemyList);
-    // 或者如果你是直接赋值：
-    // m_engine->m_enemies = enemyList; (如果在引擎内部写的话)
-
-    // 实例化卡牌和遗物
     CardManager* cardManager = new CardManager();
+    cardManager->setParent(m_view);
     cardManager->initializeDeck(context.currentDeck);
 
     RelicManager* relicManager = new RelicManager();
+    relicManager->setParent(m_view);
     for (Relic* r : context.relics) relicManager->addRelic(r);
 
     // ========================================================
-    // 🔴【核心闭环】：把装填好的 enemyList 递给大脑！
+    // 🔴 核心解耦：以后工厂只看类型（如 "Elite"）和层数，自己去卡池摇号！
     // ========================================================
-    // 以前是传 enemy，现在传 enemyList！
+    QList<Enemy*> enemyList = EnemyFactory::createEncounter(context.nodeType, context.currentLayer);
+
     m_engine = new BattleEngine(player, enemyList, cardManager, relicManager);
+    m_engine->setParent(m_view);
 
-    // 填入背景图片路径（必须在 bindEngine 之前）
     m_engine->setBackgroundPath(":/resources/images/thunder_beach.png");
-
-    m_view = new BattleView();
     m_view->bindEngine(m_engine);
     m_view->bindRelics(relicManager);
 
-
-    // =========================================================
-    // 3. 🔴【最核心的黑盒闭环】：监听内部战斗结束，生成结算报告并销毁自己
-    // =========================================================
-    // 🟢 正确写法：在方括号里显式写上 context 和 relicManager，把它们复印保存下来！
-    connect(m_engine, &BattleEngine::battleEnded, this, [this, player, context, relicManager](bool victory) {
+    // ========================================================
+    // 🎁 结算升级：生成战报与战利品包裹！
+    // ========================================================
+    connect(m_engine, &BattleEngine::battleEnded, this, [this, player, context, relicManager, cardManager](bool victory) {
         BattleResult result;
         result.isVictory = victory;
         result.currentHp = player->getHp();
-        result.gold = player->getGold();
-        result.maxHp=player->getMaxHp();
-        result.maxEnergy=player->getMaxEnergy();
-        // 现在用复印下来的 context 就绝对安全了喵！
-        result.relics = context.relics;
+        result.maxHp = player->getMaxHp();
+        result.maxEnergy = player->getMaxEnergy();
+        result.currentGold = player->getGold(); // ⚠️ 这是战斗结算前的本金
 
-        m_view->close();
+        // 1. 🛡️ 内存安全转化：提取战斗结束时的卡牌与遗物实体 ID
+        // （防止战斗中有卡牌被销毁/增加，或者有遗物被损坏）
+        QList<Card*> allSurvivingCards;
+        allSurvivingCards.append(cardManager->getHand());
+        allSurvivingCards.append(cardManager->getDrawPile());
+        allSurvivingCards.append(cardManager->getDiscardPile());
+        allSurvivingCards.append(cardManager->getExhaustPile()); // 被消耗的牌只是本场战斗不能用，并没有被撕毁
+        allSurvivingCards.append(cardManager->m_playedPowers);   // 打出的能力牌也要回收
+
+        for (Card* c : allSurvivingCards) {
+            if (c) result.finalDeckIds.append(c->getId());
+        }
+
+        for (Relic* r : relicManager->getRelics()) {
+            if (r) result.finalRelicIds.append(r->getId());
+        }
+
+        // 2. 🎁 战利品生成逻辑（完全依赖 context 的抽象标签！）
+        if (victory) {
+            result.hasCardReward = true;
+            result.cardRewardCount = 3;
+
+            if (context.nodeType == "Boss") {
+                result.rewardGold = 100;
+                result.rewardRelicIds.append("relic_snecko_eye"); // 以后换成用工厂随机掉落
+            } else if (context.nodeType == "Elite") {
+                result.rewardGold = 30;
+                result.rewardRelicIds.append("relic_pen_nib"); // 以后换成用工厂随机掉落
+            } else {
+                result.rewardGold = 15; // 普通怪保底金币
+            }
+        }
+
         emit battleConcluded(result);
-
-        relicManager->deleteLater();
-        this->deleteLater();
     });
 
-    // 4. 显示舞台，吹响战斗号角！
-    m_view->show();
-    qDebug() << "正式亮相后的真实窗口大小:" << m_view->size(); // 👈 此时的大小 100% 准确！
+    qDebug() << "正式亮相后的真实窗口大小:" << m_view->size();
     m_engine->startBattle();
+    return m_view;
 }
