@@ -22,6 +22,7 @@ public:
     // 🟢【架构大师钦点接口】：一键灌注逻辑大脑，全自动激活全场数据线！
     void bindEngine(BattleEngine* engine);
     void bindRelics(RelicManager* relicManager);
+    BattleEngine* getEngine() const { return m_engine; }
 
     void playShuffleAnimation(); // 播放弃牌堆洗入抽牌堆的金色方块动画
 

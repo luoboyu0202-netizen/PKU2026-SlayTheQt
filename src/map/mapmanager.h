@@ -34,7 +34,10 @@ public slots:
     // 这样当战斗胜利后，大地图才知道要把哪个节点打上叉叉标记
     void triggerBattle(const MapNode& node);
 
-private:
+signals:
+    void battleRequested(const MapNode& node);
+
+public:
     QMap<int, QList<MapNode>> m_mapData;
 
     // ==========================================

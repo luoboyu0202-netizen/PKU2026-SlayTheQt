@@ -1,98 +1,71 @@
 #pragma once
 #include <QString>
+#include <QStringList>
+#include <QList>
 #include "../entities/Enemy.h"
 #include <QDebug>
 #include <QRandomGenerator>
 
 class EnemyFactory {
 public:
-    // 核心工厂加工厂方法
-    static Enemy* createEnemy(const QString& enemyId) {
-        if (enemyId == "Slime_01") {
-            // 如果是酸液大史莱姆
-            QString slimePath = ":/resources/images/slime_acid.png";
+    // ========================================================
+    // 🎭 摇号与统筹车间 (全新对外接口！)
+    // 根据地图传来的节点类型和层数，全自动摇号并生成经过强化的军团！
+    // ========================================================
+    static inline QList<Enemy*> createEncounter(const QString& nodeType, int currentLayer) {
+        QString encounterId;
 
-            // 🔴 2. 打印出来，让控制台告诉我们路径有没有写错喵！
-            qDebug() << "[Diagnostics - Logic] 准备制造史莱姆，给它的照片路径是:" << slimePath;
-
-            // 🔴 3. 用这个创建好的 slimePath 变量，去替换原来硬编码的字符串！
-            Enemy* slime = new Enemy(QStringLiteral("酸液大史莱姆"), 120, slimePath);
-
-            slime->setId(enemyId);
-
-            QList<Intent> ai;
-
-            ai.append(Intent(IntentType::Summon, 2, StatusType::None, 0, "", "Slime_Small"));
-
-            ai.append(Intent(IntentType::InsertStatus, 5, StatusType::None, 0, "card_slimed", ""));
-
-            ai.append(Intent(IntentType::AttackAndDebuff, 10, StatusType::Vulnerable, 3));
-
-            ai.append(Intent(IntentType::Attack, 6, StatusType::None, 0, "", "", 3));
-
-            // // // 第2回合：吐酸水，给你挂上 2 层脆弱
-            // // ai.append(Intent(IntentType::Debuff, 2, StatusType::Frail));
-
-            // // 第3回合：重重咬你一口，造成 18 点伤害
-            // ai.append(Intent(IntentType::Attack, 18));
-
-            // // // 第4回合：史莱姆发怒！给自己上 2 层力量并格挡 12 点！
-            // // ai.append(Intent(IntentType::DefendAndBuff, 12, StatusType::Strength, 2));
-
-            slime->setIntentSequence(ai);
-
-            return slime;
+        // 🎲 1. 盲盒摇号逻辑 (Random Pool Selection)
+        if (nodeType == "Boss") {
+            QStringList bossPool = {"Slime_Boss"}; // 以后可以加入 "The_Guardian", "Hexaghost" 等
+            encounterId = bossPool[QRandomGenerator::global()->bounded(bossPool.size())];
         }
-        else if (enemyId == "Slime_Small") {
-            // ⚠️ 记得去搞一张小史莱姆的图片放进 qrc 里喵！
-            QString path = ":/resources/images/slime_small.png";
-
-            // 血量只有 12，很脆！
-            Enemy* slime = new Enemy(QStringLiteral("酸液小史莱姆"), 12, path);
-
-            slime->setId(enemyId);
-
-            QList<Intent> ai;
-            // 它的 AI 很简单：第一回合撞你 5 滴血，第二回合给你上 1 层虚弱，循环！
-
-            int randomDmg = QRandomGenerator::global()->bounded(7, 9);
-            ai.append(Intent(IntentType::Attack, randomDmg));
-
-            int randomTimes = QRandomGenerator::global()->bounded(1, 2);
-            ai.append(Intent(IntentType::Debuff, randomTimes, StatusType::Weak));
-            slime->setIntentSequence(ai);
-
-            return slime;
+        else if (nodeType == "Elite") {
+            QStringList elitePool = {"Gremlin_Nob", "Three_Sentries"}; // 假设有地精大块头和三柱神
+            // 兜底：如果你还没写这俩，就强行让它出个狂暴地精群
+            encounterId = "Mad_Gremlin_Gang";
         }
-        else if (enemyId == "Mad_Gremlin") {
-            // 如果是疯狂地精
-            Enemy* gremlin = new Enemy(QStringLiteral("疯狂地精"), 24);
-
-            gremlin->setId(enemyId);
-
-            QList<Intent> ai;
-            ai.append({IntentType::Attack, 12}); // 攻击极高！
-            gremlin->setIntentSequence(ai);
-            return gremlin;
+        else {
+            // 普通怪池 (Monster)
+            QStringList monsterPool = {"Slime_Squad", "Single_Slime", "Mad_Gremlin_Gang"};
+            encounterId = monsterPool[QRandomGenerator::global()->bounded(monsterPool.size())];
         }
 
-        // 兜底防御性代码，防止拼写错误导致游戏崩溃
-        return new Enemy(QStringLiteral("未知的野生黑泥怪"), 10);
+        qDebug() << "[EnemyFactory] 🎲 节点类型:" << nodeType << "-> 摇中图纸:" << encounterId;
+
+        // 🛠️ 2. 送入造兵车间，按图纸组装肉体
+        QList<Enemy*> squad = buildSquad(encounterId);
+
+        // 💉 3. 强化车间：层数动态补正 (Dynamic Difficulty Scaling)
+        // 让第 10 层的史莱姆比第 1 层的史莱姆血量更厚！
+        for (Enemy* e : squad) {
+            int hpBuff = currentLayer * 3; // 每深入一层，怪物最大生命值 +3
+            e->setMaxHp(e->getMaxHp() + hpBuff);
+            e->setHp(e->getMaxHp()); // 满血复活
+
+            // 未来甚至可以在这里给怪物的 Intent 伤害增加 currentLayer * 1 的修正
+        }
+
+        return squad;
     }
 
-    static QList<Enemy*> createEncounter(const QString& encounterId) {
+public:
+    // ========================================================
+    // 🛠️ 造兵车间 (你以前的 createEncounter)
+    // 只负责根据具体的图纸 ID，把怪摆到对应的槽位上
+    // ========================================================
+    static inline QList<Enemy*> buildSquad(const QString& encounterId) {
         QList<Enemy*> squad;
 
         if (encounterId == "Slime_Squad") {
-            // 经典配置：左边一只小史莱姆(Slot 0)，中间大史莱姆(Slot 1)，右边小史莱姆(Slot 2)
             Enemy* leftSmall = createEnemy("Slime_Small");
-            leftSmall->setSlotIndex(0); // 🔴 坐 0 号位
+            leftSmall->setSlotIndex(0);
 
             Enemy* centerBoss = createEnemy("Slime_01");
-            centerBoss->setSlotIndex(1); // 🔴 坐 1 号位
+            centerBoss->setSlotIndex(1);
 
             Enemy* rightSmall = createEnemy("Slime_Small");
-            rightSmall->setSlotIndex(2); // 🔴 坐 2 号位
+            rightSmall->setSlotIndex(2);
 
             squad.append(leftSmall);
             squad.append(centerBoss);
@@ -100,11 +73,63 @@ public:
         }
         else if (encounterId == "Single_Slime") {
             Enemy* boss = createEnemy("Slime_01");
-            boss->setSlotIndex(0); // 独狼直接坐 0 号位
+            boss->setSlotIndex(0);
             squad.append(boss);
         }
-        // 未来可以加：Cultist_Group (3个邪教徒) 等等...
+        else if (encounterId == "Mad_Gremlin_Gang") {
+            // 新增遭遇战图纸：两只疯狂地精
+            Enemy* g1 = createEnemy("Mad_Gremlin");
+            g1->setSlotIndex(0);
+            Enemy* g2 = createEnemy("Mad_Gremlin");
+            g2->setSlotIndex(1);
+            squad.append(g1);
+            squad.append(g2);
+        }
+        else if (encounterId == "Slime_Boss") {
+            // 假装它是第一层的大 Boss 史莱姆王
+            Enemy* bigBoss = createEnemy("Slime_01");
+            bigBoss->setMaxHp(150); // 给点 Boss 专属特权
+            bigBoss->setHp(150);
+            bigBoss->setSlotIndex(1); // 坐中间
+            squad.append(bigBoss);
+        }
 
         return squad;
+    }
+
+    // ========================================================
+    // 🧬 细胞车间 (你以前的 createEnemy，保持原样封装成 private)
+    // ========================================================
+    static inline Enemy* createEnemy(const QString& enemyId) {
+        if (enemyId == "Slime_01") {
+            Enemy* slime = new Enemy(QStringLiteral("酸液大史莱姆"), 80, ":/resources/images/slime_acid.png");
+            slime->setId(enemyId);
+            QList<Intent> ai;
+            ai.append(Intent(IntentType::Summon, 2, StatusType::None, 0, "", "Slime_Small"));
+            ai.append(Intent(IntentType::InsertStatus, 5, StatusType::None, 0, "card_slimed", ""));
+            ai.append(Intent(IntentType::AttackAndDebuff, 10, StatusType::Vulnerable, 3));
+            ai.append(Intent(IntentType::Attack, 6, StatusType::None, 0, "", "", 3));
+            slime->setIntentSequence(ai);
+            return slime;
+        }
+        else if (enemyId == "Slime_Small") {
+            Enemy* slime = new Enemy(QStringLiteral("酸液小史莱姆"), 12, ":/resources/images/slime_small.png");
+            slime->setId(enemyId);
+            QList<Intent> ai;
+            ai.append(Intent(IntentType::Attack, QRandomGenerator::global()->bounded(7, 9)));
+            ai.append(Intent(IntentType::Debuff, QRandomGenerator::global()->bounded(1, 2), StatusType::Weak));
+            slime->setIntentSequence(ai);
+            return slime;
+        }
+        else if (enemyId == "Mad_Gremlin") {
+            Enemy* gremlin = new Enemy(QStringLiteral("疯狂地精"), 24);
+            gremlin->setId(enemyId);
+            QList<Intent> ai;
+            ai.append(Intent(IntentType::Attack, 12));
+            gremlin->setIntentSequence(ai);
+            return gremlin;
+        }
+
+        return new Enemy(QStringLiteral("未知的野生黑泥怪"), 10);
     }
 };

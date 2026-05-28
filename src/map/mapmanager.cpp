@@ -153,62 +153,7 @@ void MapManager::generateMapNodes() {
 }
 
 void MapManager::triggerBattle(const MapNode& clickedNode) {
-    // 1. 准备粮草：从全局仓库提取真实数据
-    BattleContext context;
-    GlobalSaveData* save = GlobalSaveData::getInstance();
-
-    context.currentHp = save->currentHp;
-    context.maxHp = save->maxHp;
-    context.gold = save->gold;
-    context.maxEnergy = save->maxEnergy;
-
-    // 🔴 核心重构：利用工厂，根据全局存的 ID 动态生成卡牌交由战斗引擎接管
-    for (const QString& cardId : save->deckIds) {
-        context.currentDeck.append(CardFactory::createCard(cardId, nullptr));
-    }
-
-    // 🔴 核心重构：利用工厂生成遗物
-    for (const QString& relicId : save->relicIds) {
-        context.relics.append(RelicFactory::createRelic(relicId, nullptr));
-    }
-
-    // 根据节点类型决定遭遇战的敌人 ID
-    if (clickedNode.type == "Boss") context.enemySeedOrId = "Boss_Slime";
-    else if (clickedNode.type == "Elite") context.enemySeedOrId = "Elite_Slime";
-    else context.enemySeedOrId = "Slime_Squad";
-
-    BattleLauncher* launcher = new BattleLauncher(this);
-
-    // 2. 监听战报：战斗结束后，把数据写回全局仓库
-    connect(launcher, &BattleLauncher::battleConcluded,
-            this, [this, launcher, clickedNode](BattleResult result) {
-
-                if (!result.isVictory) {
-                    qDebug() << "主角阵亡，弹出 GameOver 界面!";
-                } else {
-                    qDebug() << "战斗胜利！准备同步全局数据...";
-                    GlobalSaveData* save = GlobalSaveData::getInstance();
-
-                    // 🟢 将战后的真实血量和金币写回全局！
-                    save->currentHp = result.currentHp;
-                    save->gold = result.gold;
-                    save->maxEnergy=result.maxEnergy;
-                    save->maxHp=result.maxHp;
-
-
-                    // 3. 标记状态并刷新大地图进度
-                    m_currentLayer = clickedNode.layer;
-                    m_currentNodeId = clickedNode.id;
-                    m_visitedNodes.append(clickedNode.id);
-
-                    refreshNodeStates();
-                }
-
-                launcher->deleteLater();
-            });
-
-    // 3. 吹响号角
-    launcher->launch(context);
+    emit battleRequested(clickedNode);
 }
 // ==========================================
 // 绘制大地图底层的交叉连线
