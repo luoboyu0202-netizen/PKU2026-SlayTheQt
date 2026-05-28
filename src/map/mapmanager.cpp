@@ -8,26 +8,25 @@
 #include "../logic/CardFactory.h"
 #include "../logic/RelicFactory.h"
 // 如果需要用到全局存档，可以在这里引入 GlobalSaveData.h
+#include <QPainterPath> // 👈 新增：用于绘制优雅的弯曲路径
 
 MapManager::MapManager(QWidget *parent) : QWidget(parent) {
-    // 强制把大地图的真实尺寸撑开（假设宽度1280，高度1500）
+    // 强制把大地图的真实尺寸撑开（假设宽度1280，高度2200）
     // 只有内部画板足够高，外面的窗口才能生成上下滚动条！
-    this->setMinimumSize(1280, 1500);
+    this->setMinimumSize(1280, 3000);
     // 界面初始化逻辑
     generateMapNodes();
 }
 
 void MapManager::generateMapNodes() {
-    // TODO: 这里之后会用来绘制你的地图节点（比如商店、精英怪、篝火等）
     m_mapData.clear();
-    const int TOTAL_LAYERS = 15; // 假设地图总共有 15 层
-    int currentId = 1000;        // 节点 ID 从 1000 开始递增
+    const int TOTAL_LAYERS = 15;
+    int currentId = 1000;
 
     // ==========================================
-    // 第一步：生成纯节点（无连线）与 第三步：坐标抖动
+    // 第一步：生成纯节点与坐标抖动
     // ==========================================
     for (int layer = 0; layer < TOTAL_LAYERS; ++layer) {
-        // 每一层随机生成 2 到 4 个节点
         int nodeCount = (layer == TOTAL_LAYERS - 1) ? 1 : QRandomGenerator::global()->bounded(2, 5);
         QList<MapNode> layerNodes;
 
@@ -37,42 +36,44 @@ void MapManager::generateMapNodes() {
             node.layer = layer;
             node.position = pos;
 
-            // 根据层数权重分配节点类型
             if (layer == TOTAL_LAYERS - 1) {
                 node.type = "Boss";
             } else if (layer == 0) {
-                node.type = "Monster"; // 第一层保底普通怪
+                node.type = "Monster";
             } else if (layer == 7) {
-                node.type = "Campfire"; // 第七层保底篝火休息
+                node.type = "Campfire";
             } else {
-                // 其他层随机分配
                 int randVal = QRandomGenerator::global()->bounded(100);
                 if (randVal < 45) node.type = "Monster";
                 else if (randVal < 70) node.type = "Elite";
-                else if (randVal < 85) node.type = "Shop";
+                else if (randVal < 85) {
+                    // 将部分商店替换为宝箱或事件
+                    int r = QRandomGenerator::global()->bounded(100);
+                    if (r < 50) node.type = "Chest";
+                    else node.type = "Event";
+                }
                 else node.type = "Campfire";
             }
 
-            // ==========================================
-            // 🔴 全新升级：动态居中与纵向拉伸算法
-            // ==========================================
-            int canvasWidth = 1280;   // 我们大地图的真实宽度
-            int nodeSpacingX = 160;   // 节点之间的横向间距
-
-            // 1. 计算当前这一层所有节点排在一起的“总宽度”
+            int canvasWidth = 1280;
+            int nodeSpacingX = 160;
             int totalLayerWidth = (nodeCount - 1) * nodeSpacingX;
+            int startX = (canvasWidth - totalLayerWidth) / 2 -40;
 
-            // 2. 根据总宽度，计算出这一层最左边那个节点的起始 X 坐标，绝对完美居中！
-            int startX = (canvasWidth - totalLayerWidth) / 2;
+            // ==========================================
+            // 🔴 核心升级：奇偶层交错 (Staggered Grid)
+            // 如果是奇数层，整体向右偏移半个节点间距 (80像素)
+            // 这样彻底打破了同节点数时的绝对垂直对齐！
+            // ==========================================
+            if (layer % 2 != 0) {
+                startX += nodeSpacingX / 2;
+            }
 
-            // 3. 算出当前节点的准确 X 坐标
             int baseX = startX + pos * nodeSpacingX;
+            int baseY = 2700 - layer * 180;
 
-            // 4. 纵向拉伸：我们画板高度设了 1500，所以把起点往下移，间距拉大，让滚动更爽！
-            // 从 Y = 1350 开始，每层往上爬 85 像素
-            int baseY = 1350 - layer * 85;
-            node.uiX = baseX + QRandomGenerator::global()->bounded(-20, 20); // X 轴抖动
-            node.uiY = baseY + QRandomGenerator::global()->bounded(-15, 15); // Y 轴抖动
+            node.uiX = baseX + QRandomGenerator::global()->bounded(-20, 20);
+            node.uiY = baseY + QRandomGenerator::global()->bounded(-40, 40);
 
             layerNodes.append(node);
         }
@@ -80,20 +81,16 @@ void MapManager::generateMapNodes() {
     }
 
     // ==========================================
-    // 第二步：交叉连线算法 (核心连通逻辑)
+    // 第二步：交叉连线算法
     // ==========================================
     for (int i = 0; i < TOTAL_LAYERS - 1; ++i) {
         QList<MapNode>& currentLayer = m_mapData[i];
         QList<MapNode>& nextLayer = m_mapData[i+1];
 
-        // 1. 向上保底：确保下一层的每个节点都至少有一条线从当前层连过来
         for (int nextIdx = 0; nextIdx < nextLayer.size(); ++nextIdx) {
-            // 找一个相对位置最接近的当前层节点
             int currIdx = (nextIdx * currentLayer.size()) / nextLayer.size();
             currentLayer[currIdx].nextNodes.append(nextLayer[nextIdx].id);
         }
-
-        // 2. 向下保底：确保当前层的每个节点都至少连出一条线到下一层
         for (int currIdx = 0; currIdx < currentLayer.size(); ++currIdx) {
             if (currentLayer[currIdx].nextNodes.isEmpty()) {
                 int nextIdx = (currIdx * nextLayer.size()) / currentLayer.size();
@@ -105,51 +102,69 @@ void MapManager::generateMapNodes() {
     qDebug() << "========================================";
     qDebug() << "大地图生成完毕！共生成层数：" << m_mapData.size();
     qDebug() << "========================================";
+
     // ==========================================
-    // 第四步：渲染占位 UI（把隐形数据变成真正的按钮）
+    // 第三步：渲染高清 PNG 贴图按钮
     // ==========================================
-    // 🔴 在生成新地图前，清空旧的记忆
     m_nodeButtons.clear();
     m_visitedNodes.clear();
     m_currentLayer = -1;
     m_currentNodeId = -1;
+
     for (int layer = 0; layer < m_mapData.size(); ++layer) {
         for (const MapNode& node : m_mapData[layer]) {
-            // 1. 创建一个按钮实体，并依附在当前的大地图窗口 (this) 上
             QPushButton* btn = new QPushButton(this);
-
-            // 🔴 把生成好的按钮指针，用它的 id 当钥匙存进字典里！
             m_nodeButtons.insert(node.id, btn);
 
-            // 2. 在按钮上写上节点类型和层数，方便你测试看图
-            btn->setText(QString("层:%1\n%2").arg(layer).arg(node.type));
+            int iconWidth = 65;
+            int iconHeight = 65;
+            QString imagePath;
 
-            // 3. 将按钮摆放到算法算好的坐标位置 (宽 65, 高 45)
-            btn->setGeometry(node.uiX, node.uiY, 65, 45);
-
-            // 4. 给不同类型的节点上点颜色，方便区分（基础样式）
+            // 匹配 map_images 文件夹下的对应高清贴图
             if (node.type == "Boss") {
-                btn->setStyleSheet("background-color: #f44336; color: white; font-weight: bold;"); // 红色Boss
+                imagePath = ":/resources/images/map_images/elite.png"; // Boss 暂用精英怪图标放大代替
+                iconWidth = 100;
+                iconHeight = 100;
             } else if (node.type == "Campfire") {
-                btn->setStyleSheet("background-color: #ff9800; color: white;"); // 橙色篝火
+                imagePath = ":/resources/images/map_images/campfire.png";
+            } else if (node.type == "Chest") {
+                imagePath = ":/resources/images/map_images/chest.png";
             } else if (node.type == "Elite") {
-                btn->setStyleSheet("background-color: #9c27b0; color: white;"); // 紫色精英
+                imagePath = ":/resources/images/map_images/elite.png";
+                iconWidth = 80;
+                iconHeight = 80;
+            } else if (node.type == "Event") {
+                imagePath = ":/resources/images/map_images/event.png";
             } else {
-                btn->setStyleSheet("background-color: #607d8b; color: white;"); // 灰蓝色普通节点
+                imagePath = ":/resources/images/map_images/monster.png";
             }
 
-            // 🔴 注意这里的 connect 修改！现在我们要把整个 node 传过去！
+            // 微调中心点，使大图标依然能与连线对齐
+            btn->setGeometry(node.uiX - (iconWidth - 65)/2, node.uiY - (iconHeight - 45)/2, iconWidth, iconHeight);
+
+            // 核心样式：设置贴图、透明背景、以及鼠标悬停发光效果
+            QString styleSheet = QString(
+                                     "QPushButton {"
+                                     "   border-image: url(%1);"
+                                     "   background-color: transparent;"
+                                     "}"
+                                     "QPushButton:hover {"
+                                     "   background-color: rgba(255, 255, 255, 50);"
+                                     "   border-radius: 15px;"
+                                     "}"
+                                     ).arg(imagePath);
+
+            btn->setStyleSheet(styleSheet);
+            btn->setText(""); // 清空占位文字
+
             connect(btn, &QPushButton::clicked, this, [this, node]() {
                 this->triggerBattle(node);
             });
 
-            // 6. 让按钮现身！
             btn->show();
         }
     }
-    // 🔴 在整个生成函数的最后一行，调用一次刷新函数，给起点层亮绿灯！
     refreshNodeStates();
-
 }
 
 void MapManager::triggerBattle(const MapNode& clickedNode) {
@@ -158,41 +173,68 @@ void MapManager::triggerBattle(const MapNode& clickedNode) {
 // ==========================================
 // 绘制大地图底层的交叉连线
 // ==========================================
+// ==========================================
+// 绘制大地图底层的交叉连线 (纯净版)
+// ==========================================
+// ==========================================
+// 绘制大地图底层的交叉连线 (发散触点纯净版)
+// ==========================================
 void MapManager::paintEvent(QPaintEvent *event) {
-    QWidget::paintEvent(event); // 先让父类完成基础绘制
+    QWidget::paintEvent(event);
 
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing); // 开启抗锯齿，让线条更平滑
+    painter.setRenderHint(QPainter::Antialiasing);
 
-    // 设置画笔的样式：浅灰色，粗细为 3，线条样式为虚线 (DashLine)
-    QPen pen(QColor(180, 180, 180), 3, Qt::DashLine);
+    // 🌟 1. 恢复了这里的空格！必须和你的实际文件名严格一致
+    QPixmap bgMap(":/resources/images/map_images/map_bg .jpg");
+    if (!bgMap.isNull()) {
+        painter.drawPixmap(0, 0, this->width(), this->height(), bgMap);
+    } else {
+        qWarning() << "[UI] ⚠️ 警告：无法加载地图背景图片，请检查路径！";
+    }
+
+    // 2. 绘制连线 (调低透明度使其更像底纹)
+    QPen pen(QColor(60, 60, 60, 180), 3, Qt::DashLine);
     painter.setPen(pen);
 
-    // 遍历地图数据，把每一层和下一层连起来
-    // 注意：最后一层（Boss层）没有下一层了，所以循环到 m_mapData.size() - 1 即可
     for (int layer = 0; layer < m_mapData.size() - 1; ++layer) {
         const QList<MapNode>& currentLayerNodes = m_mapData[layer];
         const QList<MapNode>& nextLayerNodes = m_mapData[layer + 1];
 
-        // 遍历当前层的所有节点
         for (const MapNode& currNode : currentLayerNodes) {
-            // 计算当前按钮的中心点坐标（按钮宽 65，高 45，所以各加上一半）
+            // 起点：当前节点的正上方边缘
             int startX = currNode.uiX + 32;
-            int startY = currNode.uiY + 22;
+            int startY = currNode.uiY - 5;
 
-            // 遍历该节点通向下一层的所有目标节点 ID
             for (int nextId : currNode.nextNodes) {
-
-                // 去下一层寻找对应的目标节点
                 for (const MapNode& targetNode : nextLayerNodes) {
                     if (targetNode.id == nextId) {
-                        // 计算目标按钮的中心点坐标
-                        int endX = targetNode.uiX + 32;
-                        int endY = targetNode.uiY + 22;
 
-                        // 画出连接两点的线！
-                        painter.drawLine(startX, startY, endX, endY);
-                        break; // 找到了就跳出内层循环，继续画下一条线
+                        // 终点基础 X 坐标
+                        int baseEndX = targetNode.uiX + 32;
+
+                        // 🌟 3. 发散触点逻辑：解决所有线扎在一个点上太死板的问题
+                        // 根据X轴距离加一点微小偏移，但最大不超过15像素，杜绝乱飞
+                        int xOffset = (startX - baseEndX) * 0.1;
+                        if (xOffset > 15) xOffset = 15;
+                        if (xOffset < -15) xOffset = -15;
+
+                        int endX = baseEndX + xOffset;
+                        int endY = targetNode.uiY + 65 + 5;
+
+                        QPainterPath path;
+                        path.moveTo(startX, startY);
+
+                        // 弯曲度严格限定为 Y 轴距离的一半，杜绝溢出盖脸
+                        int ctrlYOffset = abs(startY - endY) / 2;
+
+                        QPointF c1(startX, startY - ctrlYOffset);
+                        QPointF c2(endX, endY + ctrlYOffset);
+
+                        path.cubicTo(c1, c2, QPointF(endX, endY));
+
+                        painter.drawPath(path);
+                        break;
                     }
                 }
             }
@@ -203,37 +245,34 @@ void MapManager::paintEvent(QPaintEvent *event) {
 // 判定裁判：刷新全图按钮状态与标记
 // ==========================================
 void MapManager::refreshNodeStates() {
-    // 1. 先找出当前踩着的节点，看看它能通往哪些下一层节点？
     QList<int> availableNextNodeIds;
     if (m_currentLayer != -1 && m_currentNodeId != -1) {
         for (const MapNode& node : m_mapData[m_currentLayer]) {
             if (node.id == m_currentNodeId) {
-                availableNextNodeIds = node.nextNodes; // 拿到了通行白名单！
+                availableNextNodeIds = node.nextNodes;
                 break;
             }
         }
     }
 
-    // 2. 遍历全图所有按钮，挨个宣判命运
     for (int layer = 0; layer < m_mapData.size(); ++layer) {
         for (const MapNode& node : m_mapData[layer]) {
             QPushButton* btn = m_nodeButtons[node.id];
 
-            // 命运 A：已经被踩过的节点（打叉标记！）
+            // 命运 A：已经被踩过的节点（打叉标记）
             if (m_visitedNodes.contains(node.id)) {
                 btn->setText("❌");
-                // 变灰变暗，加上红框，并且绝对不准再点！
-                btn->setStyleSheet("background-color: #222222; color: #555555; border: 2px solid darkred;");
+                // 在原有图片基础上，叠加一层半透明黑纱和红色字体
+                btn->setStyleSheet(btn->styleSheet() +
+                                   "QPushButton { font-size: 36px; color: red; background-color: rgba(0,0,0,120); }");
                 btn->setEnabled(false);
                 continue;
             }
 
             // 命运 B：未被踩过的节点，判断是否放行
             if (m_currentLayer == -1) {
-                // 游戏刚开局：只有第 0 层放行
                 btn->setEnabled(node.layer == 0);
             } else {
-                // 游戏进行中：必须是下一层，且 ID 必须在通行白名单里才放行！
                 bool isNextLayer = (node.layer == m_currentLayer + 1);
                 bool isConnected = availableNextNodeIds.contains(node.id);
                 btn->setEnabled(isNextLayer && isConnected);
