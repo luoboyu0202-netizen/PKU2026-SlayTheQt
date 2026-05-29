@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QList>
+#include <QMap>
 
 class GlobalSaveData {
 public:
@@ -33,8 +34,11 @@ public:
         deckIds.append("card_test");
 
         // 初始遗物 ID (参考你 RelicFactory 的可用 ID)
-        relicIds.append("relic_pen_nib");
+        relicIds.append("relic_burning_blood");
     }
+
+    // 🔴【新增】：记忆保险箱，记录 <遗物ID, 计数值>
+    QMap<QString, int> relicCounters;
 
 private:
     GlobalSaveData() {}

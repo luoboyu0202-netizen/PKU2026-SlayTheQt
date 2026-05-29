@@ -36,6 +36,9 @@ public:
         }
     }
 
+    int getBaseDrawCount() const { return m_baseDrawCount; }
+    void setBaseDrawCount(int count) { m_baseDrawCount = count; }
+
 signals:
     void energyChanged(int currentEnergy, int maxEnergy);
     void goldChanged(int currentGold);
@@ -44,4 +47,7 @@ private:
     int m_energy;
     int m_maxEnergy;
     int m_gold;
+
+    int m_baseDrawCount = 5; // 默认每回合抽 5 张
+
 };

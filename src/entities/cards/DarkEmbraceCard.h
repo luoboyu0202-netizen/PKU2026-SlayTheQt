@@ -8,7 +8,7 @@ class DarkEmbraceCard : public Card {
     Q_OBJECT
 public:
     explicit DarkEmbraceCard(QObject* parent = nullptr)
-        : Card("card_darkembrace", QStringLiteral("黑暗之拥"), 2, false, parent) {
+        : Card("card_dark_embrace", QStringLiteral("黑暗之拥"), 2, false, parent) {
 
         // 🔴 抽牌数是魔法数字，交给副数值！
         m_secondaryValue = 1;

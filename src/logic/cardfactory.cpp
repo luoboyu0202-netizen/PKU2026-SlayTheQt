@@ -102,7 +102,7 @@ Card* CardFactory::createCard(const QString& cardId, QObject* parent) {
     // 🛑 终极防崩溃保底
     // ========================================================
     qWarning() << "[CardFactory] ⚠️ 警报！未知的卡牌 ID:" << cardId << "，已强制发放保底【打击】以防闪退喵！";
-    return new StrikeCard(parent);
+    return nullptr;
 }
 
 // ========================================================

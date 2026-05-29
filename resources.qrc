@@ -62,5 +62,10 @@
         <file>resources/images/map_images/event.png</file>
         <file>resources/images/map_images/monster.png</file>
         <file>resources/images/map_images/map_bg .jpg</file>
+        <file>resources/images/ui/card_reward_icon.png</file>
+        <file>resources/images/ui/gold_icon.png</file>
+        <file>resources/images/relics/relic_burning_blood.png</file>
+        <file>resources/images/relics/relic_snecko_eye.png</file>
+        <file>resources/images/relics/relic_vajra.png</file>
     </qresource>
 </RCC>
