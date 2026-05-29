@@ -11,6 +11,7 @@
 #include <QMouseEvent>
 #include <QDebug>
 #include <cmath>
+#include "logic/GlobalSaveData.h"
 
 ChestView::ChestView(Player* player, RelicManager* relicManager, QWidget* parent)
     : EventBaseView(player, nullptr, relicManager, parent)
@@ -127,13 +128,30 @@ void ChestView::onChestClicked() {
     }
     m_sparkleParticles.clear();
 
-    // Generate random relic
-    m_offeredRelic = RelicFactory::generateRandomRelic(this);
+    // ========================================================
+    // 🔴 适配新版架构：先查户口去重，摇出 ID 后再造肉身！
+    // ========================================================
+    GlobalSaveData* save = GlobalSaveData::getInstance();
+
+    // 1. 呼叫智能盲盒机，摇出一个玩家绝对没有的遗物 ID
+    QString droppedRelicId = RelicFactory::generateRandomRelic(save->relicIds);
+
+    // 2. 检查遗物池是不是被抽干了（全收集玩家防崩溃）
+    if (droppedRelicId.isEmpty()) {
+        qDebug() << "[ChestView] ⚠️ 警告：遗物池已空！发放安慰奖。";
+        // 💡 可以在这里给 m_offeredRelic 赋值一个特定的“头环”遗物，或者干脆给点金币
+        return;
+    }
+
+    // 3. 拿到 ID 后，正式召唤实体！
+    m_offeredRelic = RelicFactory::createRelic(droppedRelicId, this);
+
     if (!m_offeredRelic) {
-        qDebug() << "[ChestView] ERROR: RelicFactory returned null!";
+        qDebug() << "[ChestView] ERROR: RelicFactory returned null for ID:" << droppedRelicId;
         return;
     }
     qDebug() << "[ChestView] Generated relic:" << m_offeredRelic->getName();
+    // ========================================================
 
     // Swap to open chest image
     if (!m_chestOpenPixmap.isNull()) {

@@ -29,6 +29,24 @@ public:
     QString getDescription() const { return m_description; }
     QString getImagePath() const { return m_imagePath; }
     int getCost() const { return m_cost; }
+
+    // ========================================================
+    // 🔴【新增】：动态费用篡改接口（异蛇之眼、疯狂、破灭等卡牌必备！）
+    // ========================================================
+    virtual void setCost(int newCost) {
+        // 防止出现负数费用
+        if (newCost < 0) newCost = 0;
+
+        m_cost = newCost;
+        m_isCostModified = true; // 🌟 极其重要：打上“被篡改”的思想钢印！
+    }
+
+    // 查询这张牌的费用是不是被外力扭曲过？
+    bool isCostModified() const { return m_isCostModified; }
+
+    // 允许外部强行重置修改状态（比如战斗结束后）
+    void setCostModified(bool modified) { m_isCostModified = modified; }
+
     CardType getType() const { return m_type; }
     CardTarget getTarget() const { return m_target; }
 
@@ -61,6 +79,9 @@ protected:
     int m_secondaryValue = 0;
     QString m_rawDescription;
     bool m_isXCost = false;
+
+    // 🔴【新增】：费用修改标识，默认是干干净净的 false
+    bool m_isCostModified = false;
 };
 
 #endif // CARD_H

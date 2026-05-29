@@ -4,6 +4,7 @@
 #include <QString>
 #include <QList>
 #include "entities/cards/Card.h" // 🔴 确保这里的路径指向你的卡牌基类喵
+#include <QRandomGenerator>
 
 class CardFactory {
 public:
@@ -24,6 +25,36 @@ public:
     // 适用场景：配合随机函数使用，或者以后做“卡牌图鉴UI”时遍历查阅
     // ========================================================
     static QList<QString> getAllAvailableCardIds();
+
+    // ========================================================
+    // 🃏 战利品发牌员：生成三选一的不重复卡牌列表
+    // ========================================================
+    static inline QList<QString> generateCardRewardIds(int count = 3) {
+        // 1. 获取全图鉴卡池
+        QList<QString> pool = getAllAvailableCardIds();
+
+        // 🔴 细节优化：战利品通常不会掉落初始的“打击”和“防御”
+        pool.removeAll("card_strike");
+        pool.removeAll("card_defend");
+
+        QList<QString> result;
+
+        // 2. 经典去重抽卡算法
+        for (int i = 0; i < count; ++i) {
+            if (pool.isEmpty()) break; // 卡池抽干了就停手
+
+            // 随机摇一个索引
+            int randomIndex = QRandomGenerator::global()->bounded(pool.size());
+
+            // 把抽到的卡塞进结果里
+            result.append(pool[randomIndex]);
+
+            // 🔴 极其关键：从卡池里把这张卡删掉，保证下一轮绝对不会抽到重复的！
+            pool.removeAt(randomIndex);
+        }
+
+        return result;
+    }
 
 private:
     // 🛡️ 架构师的绝对防御：

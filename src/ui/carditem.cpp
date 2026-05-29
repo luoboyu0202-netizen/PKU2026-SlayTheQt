@@ -206,26 +206,60 @@ void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
         }
     }
     // ========================================================
-    // 🎨 5. 画左上角的能量(Cost)球！
+    // 🎨 5. 画左上角的能量(Cost)球！(3A 级重构版)
     // ========================================================
     // 圆心在卡牌左上角稍微偏外一点点，更有立体感
     if (m_logicCard->getCost() >= 0)
     {
-        // 🔴【核心视觉欺骗】：如果是 X 费牌，强行把文本变成 "X"！
+        // 1. 核心视觉欺骗：如果是 X 费牌，强行把文本变成 "X"
         QString costStr;
         if (m_logicCard->isXCost()) {
             costStr = "X";
         } else {
-            costStr = QString::number(m_logicCard->getCost()); // 正常的 0, 1, 2, 3...
+            costStr = QString::number(m_logicCard->getCost());
         }
 
         QRectF costRect(-90, -120, 32, 32);
-        painter->setBrush(QColor(50, 150, 250)); // 经典的天蓝色能量球
-        painter->setPen(QPen(Qt::white, 2));
+
+        // ========================================================
+        // 💎 视觉升级 1：用径向渐变画出“3D 立体玻璃能量球”！
+        // ========================================================
+        // 让光源从左上角打过来 (costRect.topLeft() + 偏移量)
+        QRadialGradient orbGradient(costRect.center(), 16, costRect.topLeft() + QPointF(8, 8));
+        orbGradient.setColorAt(0.0, QColor(100, 200, 255)); // 球体高光（浅蓝，受光面）
+        orbGradient.setColorAt(0.8, QColor(30, 100, 200));  // 球体本体（深蓝）
+        orbGradient.setColorAt(1.0, QColor(10, 50, 100));   // 球体边缘暗部（极其立体的暗角）
+
+        painter->setBrush(orbGradient);
+        painter->setPen(QPen(QColor(20, 25, 30), 2)); // 换用深色极细描边代替纯白，打破塑料感
         painter->drawEllipse(costRect);
 
-        painter->setPen(Qt::white);
+        // ========================================================
+        // 👻 视觉升级 2：极品文本阴影（让数字悬浮在球体之上）
+        // ========================================================
         painter->setFont(QFont("Arial", 14, QFont::Bold));
+        painter->setPen(QColor(0, 0, 0, 180)); // 半透明纯黑阴影
+        // 将绘制位置向右下方偏移 1.5 个像素，画出底层投影
+        painter->drawText(costRect.translated(1.5, 1.5), Qt::AlignCenter, costStr);
+
+        // ========================================================
+        // 🚦 视觉升级 3：状态变色引擎（异蛇之眼 / 费用不足）
+        // ========================================================
+        // (注：m_isDisplayOnly 表示这张牌是不是在战利品/奖励界面，如果是展示模式，就不报红)
+        if (!m_isPlayable && !m_isDisplayOnly) {
+            // 🚨 费用不足：打不出的牌，字体变成极其刺眼的警告红！
+            painter->setPen(QColor(255, 80, 80));
+        }
+        else if (m_logicCard->isCostModified()) {
+            // 👁️ 异蛇之眼 / 疯狂 / 被减费：字体变成科技感的荧光绿！
+            painter->setPen(QColor(138, 226, 52));
+        }
+        else {
+            // ⚪ 正常情况：纯净的白色
+            painter->setPen(Qt::white);
+        }
+
+        // 最后画上带有颜色、并且有刚才底层黑影托底的超清晰数字！
         painter->drawText(costRect, Qt::AlignCenter, costStr);
     }
 
@@ -233,6 +267,16 @@ void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
 
 void CardItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
     Q_UNUSED(event);
+
+    if (m_isDisplayOnly) {
+        setZValue(100); // 浮到最上层
+        // 只需要极其简单粗暴的原地放大！
+        QPropertyAnimation* scaleAnim = new QPropertyAnimation(this, "scale");
+        scaleAnim->setEndValue(1.5); // 原地放大 1.5 倍
+        scaleAnim->setDuration(150);
+        scaleAnim->start(QAbstractAnimation::DeleteWhenStopped);
+        return; // 🟢 极其关键：直接 return！阻止后续的手牌位移代码执行！
+    }
 
     if (m_isGhost) {
         event->ignore(); // 把事件抛出去，不处理！
@@ -263,6 +307,16 @@ void CardItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
 
 void CardItem::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
     Q_UNUSED(event);
+
+    if (m_isDisplayOnly) {
+        setZValue(0); // 恢复层级
+        // 恢复原始大小
+        QPropertyAnimation* scaleAnim = new QPropertyAnimation(this, "scale");
+        scaleAnim->setEndValue(1.0);
+        scaleAnim->setDuration(150);
+        scaleAnim->start(QAbstractAnimation::DeleteWhenStopped);
+        return; // 🟢 极其关键：直接 return！
+    }
 
     if (m_isGhost) {
         event->ignore(); // 把事件抛出去，不处理！

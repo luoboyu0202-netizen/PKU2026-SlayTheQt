@@ -8,7 +8,7 @@ class FireSourceCard : public Card {
     Q_OBJECT
 public:
     explicit FireSourceCard(QObject* parent = nullptr)
-        : Card("card_firesource", QStringLiteral("薪火之源"), 2, false, parent) {
+        : Card("card_fire_source", QStringLiteral("薪火之源"), 2, false, parent) {
 
         // 🔴 能量获取属于非战斗缩放的魔法数字，交给 m_secondaryValue
         m_secondaryValue = 1;
