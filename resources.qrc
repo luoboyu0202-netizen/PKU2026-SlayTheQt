@@ -56,6 +56,12 @@
         <file>resources/images/relics/relic_bag_of_preparation.png</file>
         <file>resources/images/relics/relic_orichalcum.png</file>
         <file>resources/images/relics/relic_pen_nib.png</file>
+        <file>resources/images/map_images/campfire.png</file>
+        <file>resources/images/map_images/chest.png</file>
+        <file>resources/images/map_images/elite.png</file>
+        <file>resources/images/map_images/event.png</file>
+        <file>resources/images/map_images/monster.png</file>
+        <file>resources/images/map_images/map_bg .jpg</file>
         <file>resources/images/ui/card_reward_icon.png</file>
         <file>resources/images/ui/gold_icon.png</file>
         <file>resources/images/relics/relic_burning_blood.png</file>
