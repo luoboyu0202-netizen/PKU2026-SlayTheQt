@@ -6,6 +6,7 @@
 #include <QPropertyAnimation>
 #include "api/BattleAPI.h"
 #include <QParallelAnimationGroup> // 🔴【新增】：并行播放特效
+#include "CardDraftOverlay.h"
 
 // ==========================================
 // 🎟️ 组件：单个战利品条目按钮 (高度复用！)
@@ -52,6 +53,9 @@ private:
     QWidget* m_boardWidget;       // ⬛ 核心组件：那块砸下来的黑板！
     QVBoxLayout* m_listLayout;
     QPushButton* m_proceedButton;
+    // 在 private 区域加入：
+    CardDraftOverlay* m_draftOverlay;
+    RewardItemButton* m_pendingCardButton; // 记录是哪个按钮触发了抽卡
 
     QPropertyAnimation* m_dropAnimation; // ⏱️ 控制“砸下+抖动”的引擎
     void animateAndRemoveItem(RewardItemButton* btn);

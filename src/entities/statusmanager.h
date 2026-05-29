@@ -21,6 +21,7 @@ enum class StatusType {
     Barricade,
     Shackled,// 🔴 镣铐：回合结束时恢复等量的力量，并解除此状态
     HellFiend,
+    Confusion,
     None
     // 未来可以无限扩展：中毒、荆棘、再生...
 };

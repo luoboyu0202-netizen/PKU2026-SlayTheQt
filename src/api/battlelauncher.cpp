@@ -3,6 +3,9 @@
 #include "../entities/Enemy.h"
 #include <QDebug>
 #include "logic/enemyfactory.h"
+#include "entities/relics/relicmanager.h"
+#include "globalsavedata.h"
+#include "logic/RelicFactory.h"
 
 BattleLauncher::BattleLauncher(QObject* parent)
     : QObject(parent), m_view(nullptr), m_engine(nullptr) {}
@@ -39,50 +42,65 @@ BattleView* BattleLauncher::launch(const BattleContext& context) {
     m_view->bindRelics(relicManager);
 
     // ========================================================
-    // 🎁 结算升级：生成战报与战利品包裹！
+    // 🎁 结算升级：极其纯净的数据回传 (Read-Only Deck Architecture)
     // ========================================================
-    connect(m_engine, &BattleEngine::battleEnded, this, [this, player, context, relicManager, cardManager](bool victory) {
+    connect(m_engine, &BattleEngine::battleEnded, this, [this, player, context, relicManager](bool victory) {
         BattleResult result;
         result.isVictory = victory;
         result.currentHp = player->getHp();
         result.maxHp = player->getMaxHp();
         result.maxEnergy = player->getMaxEnergy();
-        result.currentGold = player->getGold(); // ⚠️ 这是战斗结算前的本金
+        result.currentGold = player->getGold();
 
-        // 1. 🛡️ 内存安全转化：提取战斗结束时的卡牌与遗物实体 ID
-        // （防止战斗中有卡牌被销毁/增加，或者有遗物被损坏）
-        QList<Card*> allSurvivingCards;
-        allSurvivingCards.append(cardManager->getHand());
-        allSurvivingCards.append(cardManager->getDrawPile());
-        allSurvivingCards.append(cardManager->getDiscardPile());
-        allSurvivingCards.append(cardManager->getExhaustPile()); // 被消耗的牌只是本场战斗不能用，并没有被撕毁
-        allSurvivingCards.append(cardManager->m_playedPowers);   // 打出的能力牌也要回收
+        // ❌ 删除了所有 allSurvivingCards 的收集逻辑！
+        // ❌ 删除了对状态牌的“安检”逻辑！
+        // ✅ 现在的卡组是绝对安全的，因为我们根本就不去碰全局档案！
 
-        for (Card* c : allSurvivingCards) {
-            if (c) result.finalDeckIds.append(c->getId());
-        }
+        GlobalSaveData* save = GlobalSaveData::getInstance();
 
+        // 依然只回收遗物（因为遗物在战斗中可能会改变计数器，比如“钢笔尖”叠了9层）
+        // 如果你的遗物不需要记录战中变化，这里甚至连遗物都不用回传！
         for (Relic* r : relicManager->getRelics()) {
-            if (r) result.finalRelicIds.append(r->getId());
+            if (r) {
+                result.finalRelicIds.append(r->getId()); // 依然回传 ID 列表
+
+                // 【核心】：把最新的计数器写进字典！
+                save->relicCounters[r->getId()] = r->getCounter();
+            }
         }
 
-        // 2. 🎁 战利品生成逻辑（完全依赖 context 的抽象标签！）
+        // 2. 🎁 战利品生成逻辑
         if (victory) {
             result.hasCardReward = true;
             result.cardRewardCount = 3;
 
+            // 🔴 呼叫全局档案，查明玩家现在身上有哪些遗物？
+            GlobalSaveData* save = GlobalSaveData::getInstance();
+
             if (context.nodeType == "Boss") {
                 result.rewardGold = 100;
-                result.rewardRelicIds.append("relic_snecko_eye"); // 以后换成用工厂随机掉落
-            } else if (context.nodeType == "Elite") {
+                // 🎲 Boss 掉落高级遗物盲盒
+                QString droppedRelic = RelicFactory::generateRandomRelic(save->relicIds);
+                if (!droppedRelic.isEmpty()) {
+                    result.rewardRelicIds.append(droppedRelic);
+                }
+            }
+            else if (context.nodeType == "Elite") {
                 result.rewardGold = 30;
-                result.rewardRelicIds.append("relic_pen_nib"); // 以后换成用工厂随机掉落
-            } else {
-                result.rewardGold = 15; // 普通怪保底金币
+                // 🎲 精英怪掉落遗物盲盒
+                QString droppedRelic = RelicFactory::generateRandomRelic(save->relicIds);
+                if (!droppedRelic.isEmpty()) {
+                    result.rewardRelicIds.append(droppedRelic);
+                }
+            }
+            else {
+                // 普通怪 (Monster) 通常只掉落金币和卡牌，不掉遗物
+                result.rewardGold = 15;
             }
         }
 
         emit battleConcluded(result);
+
     });
 
     qDebug() << "正式亮相后的真实窗口大小:" << m_view->size();

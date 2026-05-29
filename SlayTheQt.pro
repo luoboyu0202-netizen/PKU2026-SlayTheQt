@@ -29,6 +29,7 @@ SOURCES += \
     src/ui/battlescene.cpp \
     src/ui/battleview.cpp \
     src/ui/cardbrowseroverlay.cpp \
+    src/ui/carddraftoverlay.cpp \
     src/ui/carditem.cpp \
     src/ui/endturnbutton.cpp \
     src/ui/enemyitem.cpp \
@@ -85,7 +86,9 @@ HEADERS += \
     src/entities/enemy.h \
     src/entities/fighter.h \
     src/entities/player.h \
+    src/entities/relics/BurningBloodRelic.h \
     src/entities/relics/PenNibRelic.h \
+    src/entities/relics/SneckoEyeRelic.h \
     src/entities/relics/VajraRelic.h \
     src/entities/relics/OrichalcumRelic.h \
     src/entities/relics/AnchorRelic.h \
@@ -105,6 +108,7 @@ HEADERS += \
     src/ui/battlescene.h \
     src/ui/battleview.h \
     src/ui/cardbrowseroverlay.h \
+    src/ui/carddraftoverlay.h \
     src/ui/carditem.h \
     src/ui/endturnbutton.h \
     src/ui/enemyitem.h \

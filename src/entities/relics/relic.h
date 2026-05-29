@@ -12,10 +12,19 @@ public:
     QString getName() const { return m_name; }
     int getCounter() const { return m_counter; }
 
-    void setCounter(int count) {
-        m_counter = count;
-        emit counterChanged(m_counter); // 计数变动信号
+    // 🔴【新增】：允许外部强行覆写计数器（用于跨对局继承）
+    virtual void setCounter(int newCount) {
+        if (m_counter != newCount) {
+            m_counter = newCount;
+            emit counterChanged(m_counter); // 别忘了大喊一声，让 UI 刷新！
+        }
     }
+
+    // ⚔️ 战斗开始时的钩子
+    virtual void onBattleStart(Player* player) { Q_UNUSED(player); }
+
+    // 🛡️ 战斗结束时的钩子
+    virtual void onBattleEnd(Player* player) { Q_UNUSED(player); }
 
     // ========================================================
     // 🔴【核心机制】：战斗事件钩子 (Hooks)！

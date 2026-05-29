@@ -1,25 +1,45 @@
 #include "RewardScreen.h"
 #include "../logic/GlobalSaveData.h"
 #include <QDebug>
+#include "logic/cardfactory.h"
+#include "logic/RelicFactory.h" // 🔴 极其关键：引入你的遗物工厂，用来查户口！
 
 // ==========================================
 // 🎟️ 单个条目样式优化 (更贴近原版)
 // ==========================================
+// ==========================================
+// 🎟️ 单个条目样式优化 (支持高清图标排版)
+// ==========================================
 RewardItemButton::RewardItemButton(RewardType type, const QString& text, QWidget* parent)
     : QPushButton(text, parent), m_type(type)
 {
-    this->setFixedSize(400, 65); // 稍微加宽一点，显得更大气
+    this->setFixedSize(400, 65);
+
+    // 🔴 开启图标与文字的完美间距
+    this->setIconSize(QSize(40, 40));
+
     this->setStyleSheet(
         "QPushButton {"
-        "   background-color: rgba(20, 25, 30, 230);" // 偏蓝黑的暗色调
+        "   background-color: rgba(20, 25, 30, 230);"
         "   color: #e0e0e0;"
-        "   font-size: 18px;"
+        "   font-size: 20px;"             // 字体稍微加大一点，更有气势
+        "   font-weight: bold;"           // 战利品名字必须加粗
         "   text-align: left;"
-        "   padding-left: 20px;"
+        "   padding-left: 20px;"          // 左边留出边距
         "   border: 1px solid #4a5a6a;"
+        "   border-radius: 4px;"          // 微微的圆角，更显高级
         "}"
-        "QPushButton:hover { background-color: rgba(40, 50, 60, 255); border: 1px solid #7aa0c0; color: white; }"
-        "QPushButton:disabled { background-color: rgba(10, 10, 10, 150); color: #555555; border: 1px solid #222222; text-decoration: line-through; }"
+        "QPushButton:hover {"
+        "   background-color: rgba(45, 55, 65, 255);"
+        "   border: 2px solid #F1C40F;"   // 悬停时变成极度诱惑的金边！
+        "   color: white;"
+        "}"
+        "QPushButton:disabled {"
+        "   background-color: rgba(10, 10, 10, 150);"
+        "   color: #555555;"
+        "   border: 1px solid #222222;"
+        "   text-decoration: line-through;" // 已拾取的划线效果
+        "}"
         );
 }
 
@@ -83,6 +103,31 @@ RewardScreen::RewardScreen(QWidget *parent) : QWidget(parent) {
     m_dropAnimation = new QPropertyAnimation(m_boardWidget, "pos", this);
     m_dropAnimation->setDuration(800); // 下落全过程耗时 0.8 秒
     m_dropAnimation->setEasingCurve(QEasingCurve::OutBounce); // 🔴 就是这个！带有极其真实的重力回弹感！
+
+    // 就在 m_dropAnimation 初始化的下面：
+    m_draftOverlay = new CardDraftOverlay(this);
+    m_draftOverlay->move(0, 0); // 盖满全屏
+    m_draftOverlay->hide();
+
+    connect(m_draftOverlay, &CardDraftOverlay::cardSelected, this, [this](QString cardId) {
+        m_draftOverlay->hide();
+
+        // 🔴 玩家选完啦！重新把黑板请出来！
+        m_boardWidget->show();
+
+        GlobalSaveData::getInstance()->deckIds.append(cardId);
+        if (m_pendingCardButton) {
+            animateAndRemoveItem(m_pendingCardButton); // 发射幽灵卡牌！
+            m_pendingCardButton = nullptr;
+        }
+    });
+
+    // 🟢 修正后的返回信号连接
+    connect(m_draftOverlay, &CardDraftOverlay::returnRequested, this, [this]() {
+        m_draftOverlay->hide();
+        m_boardWidget->show(); // 👈 仅仅把钉子户黑板重新请出来，按钮完好无损，允许玩家反复横跳！
+        m_pendingCardButton = nullptr;
+    });
 }
 
 // 播放登场动画
@@ -105,27 +150,56 @@ void RewardScreen::dropDown() {
     m_dropAnimation->start();
 }
 
-// ... loadRewards() 和 拾取点击的逻辑代码保持不变（和上一个版本一样即可）...
 void RewardScreen::loadRewards(const BattleResult& result) {
     QLayoutItem* item;
     while ((item = m_listLayout->takeAt(0)) != nullptr) {
         delete item->widget();
         delete item;
     }
+
+    // 💰 1. 金币奖励
     if (result.rewardGold > 0) {
-        RewardItemButton* goldBtn = new RewardItemButton(RewardItemButton::Gold, QString("💰 获得 %1 金币").arg(result.rewardGold));
+        // 删掉 emoji，前面留两个空格给图标腾点视觉空间
+        RewardItemButton* goldBtn = new RewardItemButton(RewardItemButton::Gold, QString("  获得 %1 金币").arg(result.rewardGold));
         goldBtn->goldAmount = result.rewardGold;
+
+        // 🔴 设置金币的真实图标！(请换成你自己的金币贴图路径喵)
+        goldBtn->setIcon(QIcon(":/resources/images/ui/gold_icon.png"));
+
         connect(goldBtn, &QPushButton::clicked, this, &RewardScreen::onRewardItemClicked);
         m_listLayout->addWidget(goldBtn);
     }
+
+    // 🏺 2. 遗物奖励
     for (const QString& relicId : result.rewardRelicIds) {
-        RewardItemButton* relicBtn = new RewardItemButton(RewardItemButton::Relic, QString("🏺 获得遗物：") + relicId);
+        // ========================================================
+        // 🕵️‍♀️ 户口盘查魔法：向工厂借一个临时克隆体，问完名字就销毁！
+        // ========================================================
+        QString relicName = relicId; // 默认用 ID 兜底
+        Relic* tempRelic = RelicFactory::createRelic(relicId, nullptr);
+        if (tempRelic) {
+            relicName = tempRelic->getName(); // 拿到真正的中文名啦！(例如：异蛇之眼)
+            delete tempRelic; // 问完当场销毁，深藏功与名！
+        }
+
+        RewardItemButton* relicBtn = new RewardItemButton(RewardItemButton::Relic, QString("  获得遗物：%1").arg(relicName));
         relicBtn->relicId = relicId;
+
+        // 🔴 设置遗物的专属贴图！(完全复用之前的路径逻辑)
+        QIcon relicIcon(QString(":/resources/images/relics/%1.png").arg(relicId));
+        relicBtn->setIcon(relicIcon);
+
         connect(relicBtn, &QPushButton::clicked, this, &RewardScreen::onRewardItemClicked);
         m_listLayout->addWidget(relicBtn);
     }
+
+    // 🃏 3. 卡牌奖励
     if (result.hasCardReward) {
-        RewardItemButton* cardBtn = new RewardItemButton(RewardItemButton::Card, "🃏 增加一张卡牌到你的牌组");
+        RewardItemButton* cardBtn = new RewardItemButton(RewardItemButton::Card, "  增加一张卡牌到你的牌组");
+
+        // 🔴 设置卡牌的真实图标！(可以用一张卡背图，或者精美的卡组图标)
+        cardBtn->setIcon(QIcon(":/resources/images/ui/card_reward_icon.png"));
+
         connect(cardBtn, &QPushButton::clicked, this, &RewardScreen::onRewardItemClicked);
         m_listLayout->addWidget(cardBtn);
     }
@@ -193,12 +267,12 @@ void RewardScreen::animateAndRemoveItem(RewardItemButton* btn) {
         // 🔴 极其聪明的位置预判：
         // 因为你在 onRewardItemClicked 里已经把遗物 append 进 save 了，
         // 所以现在 size() - 1 就是它在 RelicTray 里的绝对索引位！
-        int currentRelicIndex = save->relicIds.size() - 1;
+        int currentRelicIndex = save->relicIds.size();
         if (currentRelicIndex < 0) currentRelicIndex = 0;
 
-        int trayStartX = 20;
-        int trayStartY = 60;
-        int spacing = 5;
+        int trayStartX = 10;
+        int trayStartY = 70;
+        int spacing = 8;
 
         targetPos = QPoint(trayStartX + currentRelicIndex * (48 + spacing), trayStartY);
     }
@@ -231,25 +305,34 @@ void RewardScreen::animateAndRemoveItem(RewardItemButton* btn) {
     flyAnim->start();
 }
 
-// ==========================================
-// 🖱️ 点击事件：交接给特效引擎
-// ==========================================
-// 1. 修改点击事件：变得极其干净，只负责触发特效
 void RewardScreen::onRewardItemClicked() {
     RewardItemButton* clickedBtn = qobject_cast<RewardItemButton*>(sender());
     if (!clickedBtn) return;
 
     if (clickedBtn->getType() == RewardItemButton::Gold ||
         clickedBtn->getType() == RewardItemButton::Relic) {
-
-        // 🔴 直接呼叫特效引擎！数据入账交给飞行结束后的信号去办！
+        // 金币和遗物：不需要选，直接销毁肉体，播放飞行特效！
         animateAndRemoveItem(clickedBtn);
     }
     else if (clickedBtn->getType() == RewardItemButton::Card) {
-        qDebug() << "[RewardScreen] 准备弹出卡牌三选一...";
+        // 🃏 卡牌：先别急着销毁！留着案发现场！
+        qDebug() << "[RewardScreen] 正在生成三选一盲盒...";
+        m_pendingCardButton = clickedBtn; // 记下是哪个按钮触发的
+        m_boardWidget->hide();
+
+        // 呼叫工厂发牌算法！
+        QList<QString> draftIds = CardFactory::generateCardRewardIds(3);
+
+        // 展开三选一结界！
+        m_draftOverlay->showDraft(draftIds);
     }
 }
 
+// ==========================================
+// 🚪 离场通道：点击“继续”按钮
+// ==========================================
 void RewardScreen::onProceedClicked() {
+    qDebug() << "[RewardScreen] 玩家点击了继续，准备向司令部请求放行！";
+    // 发射极其关键的信号，通知 GameWindow 降下黑幕、切回大地图！
     emit proceedRequested();
 }

@@ -72,7 +72,7 @@ PlayerItem::PlayerItem(Player* logicPlayer, QGraphicsItem* parent)
 QRectF PlayerItem::boundingRect() const {
     // 🔴 核心修复：把总高度从 350 拉长到 450！
     // 这样底部边界能到达 Y = 170，完美包住位于 108 的状态图标！
-    return QRectF(-150, -280, 400, 450);
+    return QRectF(-200, -280, 450, 450);
 }
 
 void PlayerItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {

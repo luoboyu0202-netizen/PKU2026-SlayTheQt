@@ -21,6 +21,27 @@ BattleEngine::BattleEngine(Player* player, QList<Enemy*> enemies, CardManager* c
     : QObject(parent), m_player(player), m_cardManager(cardManager), m_relicManager(relicManager), m_enemies(enemies) {
 
     s_instance = this;
+
+    // ========================================================
+    // 👁️【时序钩子：卡牌抽取劫持 (用于异蛇之眼的混乱效果)】
+    // ========================================================
+    connect(m_cardManager, &CardManager::cardDrawn, this, [this](Card* card) {
+        if (!card) return;
+
+        // 雷达扫描：玩家当前是不是处于“混乱”状态？
+        if (m_player->getStatusManager()->getStatus(StatusType::Confusion) > 0) {
+
+            // 🎲 命运的轮盘转动：0 到 3 的随机数！
+            int randomCost = QRandomGenerator::global()->bounded(4);
+
+            card->setCost(randomCost);
+
+            // 💡 如果你的卡牌有 m_isCostModified 属性，别忘了设为 true，这样 UI 可以把字变色！
+            card->setCostModified(true);
+
+            qDebug() << "[Engine] 👁️ 混乱生效！被抽到的卡牌" << card->getName() << "费用突变为了" << randomCost << "！";
+        }
+    });
     // ========================================================
     // 🔴 2. 【核心纠错】：遍历大军，给每只怪物都挂上监听器！
     // ========================================================
@@ -97,7 +118,8 @@ void BattleEngine::startBattle() {
     if (m_relicManager) {
         for (Relic* r : m_relicManager->getRelics()) {
             if (r) {
-                r->onBattleStart(); // 🎒 准备背包和 ⚓ 锚 此时会疯狂响应！
+                // 🔴 极其关键：必须把 m_player 传进去！否则蛇眼不认识主角是谁！
+                r->onBattleStart(m_player);
             }
         }
     }
@@ -128,7 +150,11 @@ void BattleEngine::startPlayerTurn() {
         qDebug() << "[Engine] 薪火之源生效！玩家额外获得了" << fireSourceAmount << "点能量！";
     }
 
-    m_cardManager->drawCards(5); // 每回合固定抽5张牌
+    // 🔴 极其关键：读取玩家身上真正的抽牌数！（如果是异蛇，这里就是 7）
+    int drawCount = m_player->getBaseDrawCount();
+    qDebug() << "[Engine] 本回合准备抽取" << drawCount << "张牌...";
+
+    m_cardManager->drawCards(drawCount);
 
     emit turnStarted(true);
 }
@@ -212,6 +238,16 @@ bool BattleEngine::playCard(Card* card, Fighter* target) {
 
     if (allEnemiesDead) {
         qDebug() << "[Engine] Victory! All enemies defeated!";
+        // ==========================================================
+        // 🔴【新增】：战斗胜利！呼叫所有遗物触发战后效果 (例如燃烧之血回血)
+        // ==========================================================
+        if (m_relicManager) {
+            qDebug() << "[Engine] 呼叫所有遗物触发战后效果...";
+            for (Relic* r : m_relicManager->getRelics()) {
+                if (r) r->onBattleEnd(m_player);
+            }
+        }
+
         emit battleEnded(true);
     }
 
@@ -561,6 +597,15 @@ void BattleEngine::executeRevealedCard(Card* card, bool exhaustIt) {
     }
     if (allEnemiesDead) {
         qDebug() << "[Engine] Victory triggered by Auto-Play!";
+        // ==========================================================
+        // 🔴【新增】：自动打出触发胜利！也要呼叫遗物！
+        // ==========================================================
+        if (m_relicManager) {
+            qDebug() << "[Engine] 呼叫所有遗物触发战后效果...";
+            for (Relic* r : m_relicManager->getRelics()) {
+                if (r) r->onBattleEnd(m_player);
+            }
+        }
         emit battleEnded(true);
     }
 }
