@@ -25,6 +25,7 @@ SOURCES += \
     src/logic/relicfactory.cpp \
     src/main.cpp \
     src/map/mapmanager.cpp \
+    src/map/titlemenuview.cpp \
     src/ui/RelicItem.cpp \
     src/ui/battlescene.cpp \
     src/ui/battleview.cpp \
@@ -103,6 +104,7 @@ HEADERS += \
     src/logic/globalsavedata.h \
     src/map/mapmanager.h \
     src/logic/relicfactory.h \
+    src/map/titlemenuview.h \
     src/ui/ConfirmButton.h \
     src/ui/RelicItem.h \
     src/ui/battlescene.h \
