@@ -13,9 +13,12 @@
 class CardBrowserOverlay : public QGraphicsObject {
     Q_OBJECT
 public:
-    // 传入要展示的卡牌列表，以及大标题
-    explicit CardBrowserOverlay(const QList<Card*>& cards, const QString& title, QGraphicsItem* parent = nullptr);
     ~CardBrowserOverlay();
+
+    // 🔴【新增】：加入 screenW 和 screenH 两个变形参数！默认是战斗大舞台的尺寸！
+    explicit CardBrowserOverlay(const QList<Card*>& cards, const QString& title,
+                       qreal screenW = 1920, qreal screenH = 1080,
+                       QGraphicsItem* parent = nullptr);
 
     QRectF boundingRect() const override;
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override;
@@ -49,4 +52,8 @@ private:
     QGraphicsSimpleTextItem* m_titleText = nullptr; // 独立标题
     QGraphicsPolygonItem* m_closeBtnVisual = nullptr; // 关闭按钮的图形
     QGraphicsSimpleTextItem* m_closeBtnText = nullptr;// 关闭按钮的文字
+
+    // 🔴【新增】：记住自己的结界尺寸
+    qreal m_screenW;
+    qreal m_screenH;
 };

@@ -6,6 +6,8 @@
 #include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 #include "ui/RewardScreen.h" // 🔴 引入战利品界面
+#include "ui/TopBar.h"
+#include "ui/RelicTray.h" // 根据你的实际路径调整，比如 "RelicTray.h"
 
 class GameWindow : public QWidget {
     Q_OBJECT
@@ -27,6 +29,9 @@ private:
     BattleLauncher* m_launcher; // ⚔️ 当前负责战斗的管家
     BattleView* m_currentBattleView; // 当前的战斗画面
 
+    TopBar* m_topBar;
+    QGraphicsView* m_topBarView;
+
     // 🔴【新增】：固定持有一个战利品频道实例
     RewardScreen* m_rewardScreen;
 
@@ -34,4 +39,6 @@ private:
     QWidget* m_curtain;                      // ⬛ 我们的物理黑幕
     QGraphicsOpacityEffect* m_curtainEffect; // 👻 控制黑幕透明度的魔法
     QPropertyAnimation* m_fadeAnimation;     // ⏱️ 控制渐变时间的引擎
+    // 🔴 补上这一句！这就是你缺失的属性！
+    RelicTray* m_globalRelicTray = nullptr;
 };

@@ -75,7 +75,7 @@ void CardItem::animateToHome() {
 }
 
 QRectF CardItem::boundingRect() const {
-    return QRectF(-90, -120, 170, 230);
+    return QRectF(-100, -130, 200, 240);
 }
 
 void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
@@ -176,9 +176,12 @@ void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
     // 🔴【核心修复 1】：使用 QTextDocument 渲染 HTML 富文本！
     // ========================================================
     QTextDocument doc;
-    doc.setDefaultFont(QFont("Microsoft YaHei", 9)); // 继承你原本设置好的描述字体
 
-    // 给文本包上一层 div，强制居中并设置默认白色，这样没被变色的字依然是白的
+    // 🔴【新增视效优化】：把默认的页面边距砍到 0！文字瞬间完美填满你的 descRect！
+    doc.setDocumentMargin(0);
+
+    doc.setDefaultFont(QFont("Microsoft YaHei", 9));
+
     QString htmlStr = QString("<div align='center' style='color: white;'>%1</div>").arg(dynamicDesc);
     doc.setHtml(htmlStr);
     doc.setTextWidth(descRect.width()); // 限制宽度，自动换行
@@ -197,9 +200,14 @@ void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
         painter->drawRoundedRect(cardRect, 12, 12);
     }
 
-    if (BattleEngine::getInstance()->isSelectingHandCard()) {
-        // 如果这张牌在大脑的勾选列表里，狠狠地给它拉一层金色传说的大外边框！
-        if (BattleEngine::getInstance()->getSelectedCards().contains(m_logicCard)) {
+    // ========================================================
+    // ✅ 修复：给时停金边也加上免死金牌！
+    // ========================================================
+    BattleEngine* engine = BattleEngine::getInstance();
+
+    // 只有在战斗中（engine存在），并且正在选牌时，才去判断画金边！
+    if (engine && engine->isSelectingHandCard()) {
+        if (engine->getSelectedCards().contains(m_logicCard)) {
             painter->setBrush(Qt::NoBrush);
             painter->setPen(QPen(QColor(241, 196, 15), 4, Qt::SolidLine)); // 4像素粗的纯正金边
             painter->drawRoundedRect(cardRect, 8, 8);
@@ -363,6 +371,11 @@ void CardItem::mousePressEvent(QGraphicsSceneMouseEvent* event) {
         return;
     }
 
+    if (m_isDisplayOnly) {
+        event->accept(); // 吞掉点击事件，当无事发生！
+        return;
+    }
+
     // ========================================================
     // 👑【绝对优先级 1】：如果大脑处于“时停选牌”模式，接管一切卡牌的点击！
     // 无论是普通牌还是状态牌，现在统统是待宰的祭品，必须一视同仁！
@@ -435,6 +448,11 @@ void CardItem::mouseMoveEvent(QGraphicsSceneMouseEvent* event) {
     // 🔴【无敌金身】：悬浮期间禁止拖拽！
     if (m_isSuspended) {
         event->accept(); // 吞掉点击
+        return;
+    }
+
+    if (m_isDisplayOnly) {
+        event->accept(); // 吞掉点击事件，当无事发生！
         return;
     }
 
@@ -516,6 +534,11 @@ void CardItem::mouseMoveEvent(QGraphicsSceneMouseEvent* event) {
 }
 
 void CardItem::mouseReleaseEvent(QGraphicsSceneMouseEvent* event) {
+
+    if (m_isDisplayOnly) {
+        event->accept(); // 吞掉点击事件，当无事发生！
+        return;
+    }
 
     if (m_isGhost) {
         event->ignore(); // 把事件抛出去，不处理！

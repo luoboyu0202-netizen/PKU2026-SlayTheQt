@@ -39,7 +39,6 @@ BattleView* BattleLauncher::launch(const BattleContext& context) {
 
     m_engine->setBackgroundPath(":/resources/images/thunder_beach.png");
     m_view->bindEngine(m_engine);
-    m_view->bindRelics(relicManager);
 
     // ========================================================
     // 🎁 结算升级：极其纯净的数据回传 (Read-Only Deck Architecture)

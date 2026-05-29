@@ -67,5 +67,10 @@
         <file>resources/images/relics/relic_burning_blood.png</file>
         <file>resources/images/relics/relic_snecko_eye.png</file>
         <file>resources/images/relics/relic_vajra.png</file>
+        <file>resources/images/icons/HellFiend_icon.png</file>
+        <file>resources/images/ui/deck_pile.png</file>
+        <file>resources/images/ui/discard_pile.png</file>
+        <file>resources/images/ui/draw_pile.png</file>
+        <file>resources/images/ui/exhaust_pile.png</file>
     </qresource>
 </RCC>

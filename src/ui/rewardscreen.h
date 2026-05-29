@@ -44,6 +44,7 @@ signals:
     // 🔴【新增】：幽灵粒子安全抵达停机坪的信号！
     void relicFlightFinished(QString relicId);
     void goldFlightFinished(int amount);
+    void deckUpdated();
 
 private slots:
     void onRewardItemClicked();
