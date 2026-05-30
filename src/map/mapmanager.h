@@ -7,6 +7,8 @@
 #include <QMap>
 #include <QPushButton> // 👈 引入按钮头文件，因为我们要保存按钮指针
 #include "../api/BattleLauncher.h"
+#include <QPropertyAnimation> // 👈 引入属性动画头文件
+#include <QEvent>             // 👈 引入事件处理头文件
 
 // 📍 地图节点数据结构 (保持不变)
 struct MapNode {
@@ -28,6 +30,9 @@ public:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
+
+    // 🔴 新增：事件过滤器，用于捕捉鼠标悬停和离开的瞬间
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 public slots:
     // 🔴 核心升级一：参数从 enemyId 换成了整个 MapNode 节点！
