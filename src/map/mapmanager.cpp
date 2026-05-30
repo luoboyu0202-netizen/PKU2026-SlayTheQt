@@ -143,19 +143,21 @@ void MapManager::generateMapNodes() {
             btn->setGeometry(node.uiX - (iconWidth - 65)/2, node.uiY - (iconHeight - 45)/2, iconWidth, iconHeight);
 
             // 核心样式：设置贴图、透明背景、以及鼠标悬停发光效果
+            // 🔴 1. 纯净版样式：删掉原来的 :hover 白框，只保留透明背景和贴图
             QString styleSheet = QString(
                                      "QPushButton {"
                                      "   border-image: url(%1);"
                                      "   background-color: transparent;"
                                      "}"
-                                     "QPushButton:hover {"
-                                     "   background-color: rgba(255, 255, 255, 50);"
-                                     "   border-radius: 15px;"
-                                     "}"
                                      ).arg(imagePath);
-
             btn->setStyleSheet(styleSheet);
             btn->setText(""); // 清空占位文字
+
+            // 🔴 2. 给每个按钮装上“记忆”和“监听器”
+            // 把每个按钮刚生成时的完美坐标和大小记录在它的私有属性里（防止动画乱漂）
+            btn->setProperty("baseGeometry", btn->geometry());
+            // 让 MapManager 亲自接管这个按钮的鼠标事件
+            btn->installEventFilter(this);
 
             connect(btn, &QPushButton::clicked, this, [this, node]() {
                 this->triggerNode(node);
@@ -275,4 +277,45 @@ void MapManager::refreshNodeStates() {
             }
         }
     }
+}
+
+// ==========================================
+// 🌟 视觉升级：鼠标悬停平滑缩放动画
+// ==========================================
+bool MapManager::eventFilter(QObject *watched, QEvent *event) {
+    QPushButton* btn = qobject_cast<QPushButton*>(watched);
+
+    // 我们只对有效（未被打叉禁用）的按钮施加魔法
+    if (btn && btn->isEnabled()) {
+
+        // 当鼠标踏入图标的领地...
+        if (event->type() == QEvent::Enter) {
+            // 提取它最初的记忆体型
+            QRect baseGeom = btn->property("baseGeometry").toRect();
+
+            // 创建一个 120 毫秒的极速平滑动画
+            QPropertyAnimation* anim = new QPropertyAnimation(btn, "geometry", btn);
+            anim->setDuration(120);
+            // 目标大小：上下左右各往外扩张 8 个像素（整体放大 16 像素）
+            anim->setEndValue(baseGeom.adjusted(-8, -8, 8, 8));
+            anim->start(QAbstractAnimation::DeleteWhenStopped);
+
+            return true; // 告诉系统：这个事件我处理完了
+        }
+        // 当鼠标恋恋不舍地离开...
+        else if (event->type() == QEvent::Leave) {
+            QRect baseGeom = btn->property("baseGeometry").toRect();
+
+            QPropertyAnimation* anim = new QPropertyAnimation(btn, "geometry", btn);
+            anim->setDuration(120);
+            // 目标大小：精准恢复到它出生时的完美比例
+            anim->setEndValue(baseGeom);
+            anim->start(QAbstractAnimation::DeleteWhenStopped);
+
+            return true;
+        }
+    }
+
+    // 其他不关心的事件，原封不动地还给父类处理
+    return QWidget::eventFilter(watched, event);
 }
