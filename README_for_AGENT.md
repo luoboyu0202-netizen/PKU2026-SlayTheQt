@@ -6,72 +6,125 @@
 |------|------|----------------|
 | 阶段1：API 合约 + 基础设施 | 完成 | EventAPI.h, EventLauncher.h/.cpp |
 | 阶段2：事件基类 + 公共 UI | 完成 | EventBaseView.h/.cpp, TopBar.h/.cpp, RelicTray.h/.cpp, LeaveButton.h/.cpp |
-| 阶段 3.1：火堆 Campfire | 完成（深度视觉调优 + 交互闭环 + OTS 视角） | CampfireView.h/.cpp, IconButton.h/.cpp |
-| 阶段 3.2：宝箱 Chest | 未开始 | — |
-| 阶段 3.3：商人 Merchant | 未开始 | — |
+| 阶段 3.1：火堆 Campfire | 完成 | CampfireView.h/.cpp, IconButton.h/.cpp |
+| 阶段 3.2：宝箱 Chest | 完成 | ChestView.h/.cpp, RelicPopupWidget.h/.cpp |
+| **阶段 3.3：商人 Merchant** | **完成** | MerchantView.h/.cpp, 遗物 Tooltip, 购买动画, 删牌服务 |
 | 阶段 3.4：问号 QuestionMark | 未开始 | — |
-| 阶段 4：联调与边界处理 | 持续中 | UI 模块间对齐与资源自动化处理 |
-
+| 阶段 4：卡牌组件统一 | 完成 | CardItem 替代 ShopCardItem + SelectableCardItem |
+| 阶段 5：联调与边界处理 | 持续中 | 编译修复、资源格式转换、UI 对齐 |
 
 ---
 
-## 核心改进总结 (截至 2026-05-27)
+## 商人 (Merchant) 当前状态 (截至 2026-05-30)
+
+### 已完成
+- **两阶段架构**：阶段一（相遇：玩家+商人+前进箭头）→ 阶段二（购买：地毯+商品+手臂光标）
+- **商品生成**：7张随机战士卡牌（5+2布局）+ 3件遗物（最右=商店专属）
+- **定价系统**：卡牌价格按稀有度（普通45-55g / 罕见68-82g / 稀有135-165g），1张随机打折50%
+- **卡牌购买**：点击→金币扣减→卡牌熔融为光点飞向右上角（径向渐变光球+粒子尾迹+模糊光晕）
+- **遗物购买**：支持图标渲染、价格逻辑、Tooltip 显示（金色标题+白色描述）以及购买时的光点特效
+- **卡牌移除服务**：点击删牌→暗幕+牌组选择UI→确认移除→扣费→售罄占位。每商店限1次，跨商店递增75→100→125...
+- **UI 微调**：
+    - 遗物位置上移，与商品区视觉更协调
+    - 修复了 `CardItem` 在选中态下金色边框压住能量球数字的层级问题
+    - 修复了 `MerchantView` 编译错误（缺失 tooltip 声明）
+- **资源补全**：将遗物图标正式注册至 `resources.qrc`，修复了 `PenNibRelic` 路径缺失问题
+- **手臂光标**：仅悬停商品时从屏幕上方移入商品边缘；离开时连续动画移回上方消失
+- **离开飘带**：第二排左侧，点击返回阶段一（保留购物状态）
+- **前进箭头**：阶段一使用 GO_ahead.png，退出事件
+- **价格标识**：价格标签内置在卡牌中，金色=可购买，红色=余额不足
+
+---
+
+## 卡牌组件统一 (2026-05-29)
+
+原来的三个并行卡牌UI组件已统一为队友的 `CardItem`：
+
+| 组件 | 统一前 | 统一后 |
+|------|--------|--------|
+| 战斗手牌 | CardItem | 不变 |
+| 营火升级选牌 | SelectableCardItem | **CardItem** |
+| 营火升级动画 | SelectableCardItem | **CardItem** |
+| 商店购买展示 | ShopCardItem | **CardItem** |
+| 商店删牌选择 | SelectableCardItem | **CardItem** |
+
+**CardItem 扩展 (carditem.h/.cpp):**
+- `setSelectionEnabled(bool)` + `cardClicked(CardItem*)` 信号 — 非战斗选牌模式
+- `setHighlighted(bool)` + `isHighlighted()` — 金色边框选中态
+- `setPrice(int)` + `setOnSale(bool)` + `setAffordable(bool)` — 商店价格渲染
+- BattleEngine 空指针保护 — 事件模式无 BattleEngine 时不崩溃
+
+**移除的组件：**
+- `ShopCardItem.h/.cpp` — .pro中已注释
+- `SelectableCardItem.h/.cpp` — .pro中已注释
+
+---
+
+## 核心改进总结
 
 ### 1. UI 架构与一致性
-*   **状态栏 (TopBar) 完全克隆**：重构了 `TopBar.cpp` 的绘制逻辑，包含角色名显示、心形 HP 图标、金币图标，并改用 Arial 16pt Bold 字体以提升清晰度。背景色条调亮，确保在 1080p 下具有高辨识度。
-*   **遗物栏同步**：在事件基类 `EventBaseView` 中引入了 `RelicTray`，并实现了与战斗模块 1:1 匹配的排版布局（(450, 6) 槽位）。
-*   **缩放方案固定**：采用 `fitInView(0, 0, 1920, 1080)` 替代不稳定的手动 `scale()`，确保场景原点永远精准对齐窗口左上角。
-*   **IconButton 架构升级**：重构了图标加载与缩放逻辑，采用 `scaledToHeight(150)` 结合居中绘制算法，彻底解决了不同素材比例导致的按钮高度不统一问题。
+- **状态栏 (TopBar)**: 克隆战斗模块绘制逻辑，包含角色名、心形HP、金币图标
+- **遗物栏**: `RelicTray` 已接入 `EventBaseView`，匹配战斗模块排版
+- **缩放方案**: `fitInView(0, 0, 1920, 1080)` 固定
+- **卡牌组件统一**: 全事件使用单一 `CardItem`，消除三套重复渲染代码
 
-### 2. 火堆 (Campfire) 视觉与交互
-*   **真实越肩视角 (OTS)**：引入了 `rear_side-removebg-preview.png`，将玩家像大幅放大并下移，营造出极强的近景沉浸感。
-*   **素材替换**：火堆核心替换为带透明通道的 `Bonfire.png`，移除了不必要的呼吸动画与冗余的程序火焰，保持静态写实风格，并辅以微弱的火星粒子效果。
-*   **选项 UI 优化**：
-    *   **高度对齐**：通过底层的 `IconButton` 逻辑，确保“休息”与“锻造”图标高度绝对一致。
-    *   **交互蒙版**：在选牌阶段（升级）显著加深背景蒙版（Alpha 200），并将层级置于人物之上，使卡牌成为视觉中心。确认升级后立即撤销蒙版，恢复原始亮度以展示精美的升级动画。
-*   **休息动画增强**：
-    *   **全屏致盲**：白色遮罩 Z-Order 提升至 300，粒子数增加到 120+，模拟瞬间爆发的烟雾。
-    *   **熄火逻辑**：动画中途自动隐藏所有火、光图元，实现“操作完即熄灭”的物理交互。
+### 2. 火堆 (Campfire)
+- OTS视角、静态写实火堆、休息烟雾动画、升级选牌/确认/动画流程
+- 已迁移至 CardItem
 
-### 3. 系统稳定性与修复
-*   **链接错误修复**：解决了 `OrichalcumRelic` 和 `PenNibRelic` 的 `vtable` 未定义问题，将具体实现移至 `.cpp`。
-*   **访问权限调整**：将 `EventBaseView` 的核心成员（`m_scene`, `m_playerImage` 等）改为 `protected`，确保子类能正常操控 UI 元素。
-*   **RelicManager 修正**：修复了构造函数声明与定义不匹配以及重定义的问题。
+### 3. 宝箱 (Chest)
+- 水晶宝箱+星芒闪烁→点击开箱→随机遗物弹窗→拾取/跳过
+- RelicPopupWidget 独立弹窗组件
 
-
-### 3. 资源系统修复
-*   **资源清单清理**：移除了 non-existent 的 `.webp` 条目，防止构建系统报错。
-*   **类型纠正**：将 `m_choiceCloud` 类型修正为 `QGraphicsEllipseItem*`，解决了 `setBrush/setPen` 导致的编译失败。
-
-### 4. 交付与同步
-*   **目标仓库**：`PKU2026-SlayTheQt`
-*   **同步状态**：已完成所有新增功能代码、素材及配置文件的复制与提交。
-*   **Commit 信息**：`Feat: Complete Campfire event implementation with enhanced visuals, animations, and matching TopBar UI`
-*   **遗留项**：此工作区已完成阶段性交付，后续开发可在 `PKU2026-SlayTheQt` 目录下进行。
+### 4. 系统稳定性
+- 同伴文件保护规则：缺失文件注释而非删除
+- WebP文件自动检测与PNG转换
+- BattleEngine空指针防护
 
 ---
 
-## 实际文件清单
+## 文件清单
 
 ```
 src/api/
   EventAPI.h                  ✅ 事件枚举与数据合同
-  EventLauncher.h/.cpp        ✅ 调度器（支持结算自销毁）
+  EventLauncher.h/.cpp        ✅ 调度器（全事件已接入）
 
 src/ui/
-  TopBar.h/.cpp               ✅ 战斗级状态栏（角色名+HP+金币）
-  RelicTray.h/.cpp            ✅ 遗物托盘接入
+  TopBar.h/.cpp               ✅ 状态栏
+  RelicTray.h/.cpp            ✅ 遗物托盘
+  carditem.h/.cpp             ✅ 统一卡牌组件（战斗+事件）
+  cardbrowseroverlay.h/.cpp   ✅ 牌堆浏览
   events/
-    EventBaseView.h/.cpp      ✅ 基类：负责 TopBar/RelicTray/玩家像/前进引导
-    CampfireView.h/.cpp       ✅ 火堆：包含熄火逻辑、越肩视角、增强烟雾
-    IconButton.h/.cpp         ✅ 统一图标容器：支持强制 280x180 缩放
-    LeaveButton.h/.cpp        ✅ 引导按钮：支持动态抠图（去黑背景）算法
-    TextButton.h/.cpp         ✅ 选牌确认/取消按钮
+    EventBaseView.h/.cpp      ✅ 基类
+    CampfireView.h/.cpp       ✅ 火堆（已用CardItem）
+    ChestView.h/.cpp          ✅ 宝箱
+    MerchantView.h/.cpp       🚧 商人（进行中）
+    IconButton.h/.cpp         ✅ 图标按钮
+    LeaveButton.h/.cpp        ✅ 前进引导按钮
+    TextButton.h/.cpp         ✅ 文本按钮
+    RelicPopupWidget.h/.cpp   ✅ 遗物弹窗
+    # ShopCardItem.h/.cpp     ❌ 已废弃（CardItem替代）
+    # SelectableCardItem.h/.cpp ❌ 已废弃（CardItem替代）
+
+src/entities/relics/
+    relic.h                   ✅ 遗物基类（含getId/getDescription）
+    relicmanager.h/.cpp       ✅ 遗物管理
+    RelicImplementations.cpp  ✅ 具体遗物实现
+
+src/logic/
+    cardfactory.h/.cpp        ✅ 卡牌工厂（20张可玩+4状态牌）
+    relicfactory.h/.cpp       ✅ 遗物工厂
+    cardmanager.h/.cpp        ✅ 卡牌管理（含removeCardPermanently）
+    globalsavedata.h          ✅ 全局存档（含cardRemovalCost）
 ```
 
 ---
 
-## 下一步计划
-1.  **实现宝箱 (Chest)**：开发随机遗物拾取逻辑与打开动画。
-2.  **实现商人 (Merchant)**：开发随机商品池（3卡+2遗物）与购买扣款逻辑。
-3.  **开发 RelicFactory**：为宝箱和商人提供遗物生成支撑。
+## 构建注意事项
+- 编译器：`E:\Badstuff\Software\Qt\Tools\mingw1310_64\bin\g++.exe`
+- Qt路径：`E:\Badstuff\Software\Qt\6.11.0\mingw_64\`
+- PATH: `E:\Badstuff\Software\Qt\Tools\mingw1310_64\bin;E:\Badstuff\Software\Qt\6.11.0\mingw_64\bin`
+- 编译命令：`qmake ../SlayTheQt.pro && mingw32-make -j4`
+- 同伴文件规则：缺失文件在.pro中 `# 注释`，不要删除
+- WebP文件需转为PNG后在qrc中引用.png

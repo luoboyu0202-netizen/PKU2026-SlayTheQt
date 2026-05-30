@@ -64,5 +64,9 @@
         <file>resources/images/events/Merchant/label.png</file>
         <file>resources/images/events/Merchant/remove.png</file>
         <file>resources/images/events/Merchant/soldout.jpeg</file>
+        <file>resources/images/relics/relic_anchor.png</file>
+        <file>resources/images/relics/relic_bag_of_preparation.png</file>
+        <file>resources/images/relics/relic_orichalcum.png</file>
+        <file>resources/images/relics/relic_pen_nib.png</file>
     </qresource>
 </RCC>

@@ -71,6 +71,12 @@ public:
     void forceMoveToDiscard(Card* card);
     void forceMoveToExhaust(Card* card);
 
+    // 🔴【新增】：通知所有手牌重新计算伤害并刷新 UI！
+    void refreshHandDynamicText();
+
+    // 🔴【商店用】：永久删除一张卡牌（从所有堆中移除）
+    void removeCardPermanently(Card* card);
+
 
 signals:
     // UI 监听这些信号来播放飞行动画和更新数字贴图
@@ -84,6 +90,9 @@ signals:
     void cardInsertedToDiscard(Card* card);
     // 🔴 宣告：一张能力牌已进入虚空，UI 请销毁原肉体！
     void cardMovedToPower(Card* card);
+
+    void handTextNeedsUpdate();
+
 private:
 
 

@@ -2,7 +2,7 @@
 #include "EventBaseView.h"
 #include "IconButton.h"
 #include "TextButton.h"
-#include "SelectableCardItem.h"
+#include "../carditem.h"
 #include <QGraphicsEllipseItem>
 #include <QGraphicsPathItem>
 #include <QGraphicsTextItem>

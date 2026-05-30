@@ -188,6 +188,14 @@ void CardManager::exhaustCard(Card* card) {
     }
 }
 
+void CardManager::removeCardPermanently(Card* card) {
+    if (!card) return;
+    m_drawPile.removeOne(card);
+    m_hand.removeOne(card);
+    m_discardPile.removeOne(card);
+    m_exhaustPile.removeOne(card);
+}
+
 void CardManager::addCardToDiscardPile(Card* newCard) {
     if (!newCard) return;
     m_discardPile.append(newCard);
@@ -256,4 +264,13 @@ void CardManager::forceMoveToExhaust(Card* card) {
 
     emit cardExhausted(card); // 发出信号，确保黑暗之拥等效果生效
     emitPileCounts();
+}
+
+void CardManager::refreshHandDynamicText() {
+    // 💡 这里咱们直接发射大喇叭信号！
+    // 因为 Qt 的信号槽极其强大，只要在 UI 界面（比如 BattleView 或者 HandLayoutManager 里）
+    // 监听到这个信号，就让所有的 CardItem 重新去读取一遍伤害文本！
+
+    qDebug() << "[CardManager] 📢 遗物/状态发生改变！通知手牌区全体重绘动态文本喵！";
+    emit handTextNeedsUpdate();
 }

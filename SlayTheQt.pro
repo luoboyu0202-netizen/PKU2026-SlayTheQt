@@ -13,10 +13,10 @@ INCLUDEPATH += $$PWD/src \
 SOURCES += \
     src/api/EventLauncher.cpp \
     src/api/battlelauncher.cpp \
-    src/core/gamerng.cpp \
-    src/core/objectfactory.cpp \
-    src/core/savemanager.cpp \
-    src/entities/card.cpp \
+#    src/core/gamerng.cpp \
+#    src/core/objectfactory.cpp \
+#    src/core/savemanager.cpp \
+#    src/entities/card.cpp \
     src/entities/enemy.cpp \
     src/entities/fighter.cpp \
     src/entities/player.cpp \
@@ -45,11 +45,11 @@ SOURCES += \
     src/ui/events/ChestView.cpp \
     src/ui/events/EventBaseView.cpp \
     src/ui/events/MerchantView.cpp \
-    src/ui/events/ShopCardItem.cpp \
+#    src/ui/events/ShopCardItem.cpp \
     src/ui/events/IconButton.cpp \
     src/ui/events/LeaveButton.cpp \
     src/ui/events/RelicPopupWidget.cpp \
-    src/ui/events/SelectableCardItem.cpp \
+#    src/ui/events/SelectableCardItem.cpp \
     src/ui/events/TextButton.cpp \
     src/ui/shuffleeffectitem.cpp \
     src/ui/statusiconitem.cpp \
@@ -121,11 +121,11 @@ HEADERS += \
     src/ui/events/ChestView.h \
     src/ui/events/EventBaseView.h \
     src/ui/events/MerchantView.h \
-    src/ui/events/ShopCardItem.h \
+#    src/ui/events/ShopCardItem.h \
     src/ui/events/IconButton.h \
     src/ui/events/LeaveButton.h \
     src/ui/events/RelicPopupWidget.h \
-    src/ui/events/SelectableCardItem.h \
+#    src/ui/events/SelectableCardItem.h \
     src/ui/events/TextButton.h \
     src/ui/shuffleeffectitem.h \
     src/ui/statusiconitem.h \

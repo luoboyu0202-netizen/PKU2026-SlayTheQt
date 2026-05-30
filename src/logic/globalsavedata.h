@@ -17,6 +17,7 @@ public:
     int maxHp = 80;
     int gold = 99;
     int maxEnergy = 3;
+    int cardRemovalCost = 75;
 
     // 核心安全设计：只存 ID 列表，绝不存实体指针！
     QList<QString> deckIds;
@@ -26,6 +27,7 @@ public:
     void initNewGame() {
         currentHp = 80;
         gold = 99;
+        cardRemovalCost = 75;
         deckIds.clear();
         relicIds.clear();
 

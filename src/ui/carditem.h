@@ -37,15 +37,23 @@ public:
 
     void setInteractive(bool interact) {
         if (!interact) {
-            // 拒绝所有鼠标输入，把所有事件直接透传给底层（或者无视）
             setAcceptedMouseButtons(Qt::NoButton);
             setFlag(QGraphicsItem::ItemIsMovable, false);
         } else {
-            // 恢复交互
             setAcceptedMouseButtons(Qt::LeftButton);
             setFlag(QGraphicsItem::ItemIsMovable, true);
         }
     }
+
+    // --- 选择模式（事件中卡牌点选，如营火升级、商店删牌） ---
+    void setSelectionEnabled(bool enabled) { m_isSelectionEnabled = enabled; }
+    void setHighlighted(bool h) { m_isHighlighted = h; update(); }
+    bool isHighlighted() const { return m_isHighlighted; }
+    // --- 商品模式（商店购买） ---
+    void setPrice(int price) { m_price = price; }
+    int price() const { return m_price; }
+    void setOnSale(bool onSale) { m_isOnSale = onSale; update(); }
+    void setAffordable(bool canAfford) { m_isAffordable = canAfford; update(); }
 
 public:
     void setDisplayOnly(bool val) { m_isDisplayOnly = val; }
@@ -56,10 +64,10 @@ private:
     bool m_isGhost = false; // 🔴 物理断路器开关
 
 signals:
-    // 【新核心】：当玩家完美拖拽命中并松手时，向外求算账！
     void cardPlayedRequest(Card* card, Enemy* target);
-    // 当卡牌视觉被销毁时，通知管家重新排版
     void cardVisualDestroyed(CardItem* item);
+    // 选择模式下点击卡牌
+    void cardClicked(CardItem* item);
 
 protected:
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
@@ -78,6 +86,11 @@ private:
     bool m_isPlayed;
     bool m_isPlayable; // 【新增】当前费用是否足够打出这张牌
     bool m_isSuspended = false; // 默认没有悬浮
+    bool m_isSelectionEnabled = false;
+    bool m_isHighlighted = false;
+    int m_price = 0;
+    bool m_isOnSale = false;
+    bool m_isAffordable = true;
 
     EnemyItem* m_currentTargetedEnemy;
 
@@ -86,4 +99,7 @@ private:
 
     // 🔴 补办随机数生成器的户口喵！
     qreal randomBetween(qreal low, qreal high);
-};
+
+    private:
+    qreal m_defaultZ = 10.0; // 默认层级
+    };

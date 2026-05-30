@@ -64,14 +64,19 @@ void CardItem::setHomeState(const QPointF& pos, qreal rotation) {
 }
 
 void CardItem::animateToHome() {
-    setRotation(m_homeRotation);
-    setScale(1.0);
-
+    // 🔴 移除了立即 setScale(1.0) 和 setRotation，改为让动画平滑过渡，解决“抽搐”Bug！
+    
     QPropertyAnimation* posAnim = new QPropertyAnimation(this, "pos");
     posAnim->setDuration(200);
     posAnim->setEndValue(m_homePos);
     posAnim->setEasingCurve(QEasingCurve::OutQuad);
     posAnim->start(QAbstractAnimation::DeleteWhenStopped);
+
+    QPropertyAnimation* rotAnim = new QPropertyAnimation(this, "rotation");
+    rotAnim->setDuration(200);
+    rotAnim->setEndValue(m_homeRotation);
+    rotAnim->setEasingCurve(QEasingCurve::OutQuad);
+    rotAnim->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 QRectF CardItem::boundingRect() const {
@@ -197,14 +202,21 @@ void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
         painter->drawRoundedRect(cardRect, 12, 12);
     }
 
-    if (BattleEngine::getInstance()->isSelectingHandCard()) {
-        // 如果这张牌在大脑的勾选列表里，狠狠地给它拉一层金色传说的大外边框！
-        if (BattleEngine::getInstance()->getSelectedCards().contains(m_logicCard)) {
+    auto* engine = BattleEngine::getInstance();
+    if (engine && engine->isSelectingHandCard()) {
+        if (engine->getSelectedCards().contains(m_logicCard)) {
             painter->setBrush(Qt::NoBrush);
-            painter->setPen(QPen(QColor(241, 196, 15), 4, Qt::SolidLine)); // 4像素粗的纯正金边
+            painter->setPen(QPen(QColor(241, 196, 15), 4, Qt::SolidLine));
             painter->drawRoundedRect(cardRect, 8, 8);
         }
     }
+    // Selection highlight — golden border overlay
+    if (m_isHighlighted) {
+        painter->setBrush(Qt::NoBrush);
+        painter->setPen(QPen(QColor(241, 196, 15), 4, Qt::SolidLine));
+        painter->drawRoundedRect(cardRect, 8, 8);
+    }
+
     // ========================================================
     // 🎨 5. 画左上角的能量(Cost)球！
     // ========================================================
@@ -229,12 +241,49 @@ void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
         painter->drawText(costRect, Qt::AlignCenter, costStr);
     }
 
+    // Price tag (shop mode)
+    if (m_price > 0) {
+        QRectF priceRect(-45, cardRect.bottom() - 24, 90, 22);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QColor(30, 30, 30, 220));
+        painter->drawRoundedRect(priceRect, 4, 4);
+
+        QColor priceColor = m_isAffordable ? QColor(255, 215, 0) : QColor(220, 50, 50);
+
+        if (m_isOnSale) {
+            int originalPrice = m_price * 2;
+            // 1. 画原价（灰色 + 红色划线）
+            painter->setPen(QColor(130, 130, 130));
+            painter->setFont(QFont("Microsoft YaHei", 8));
+            QRectF origRect(priceRect.x(), priceRect.y() - 1, priceRect.width(), priceRect.height() / 2);
+            painter->drawText(origRect, Qt::AlignCenter, QString::number(originalPrice) + "g");
+            
+            // 画删除线
+            painter->setPen(QPen(QColor(220, 50, 50), 1.5));
+            qreal textW = painter->fontMetrics().horizontalAdvance(QString::number(originalPrice) + "g");
+            qreal lineY = origRect.center().y();
+            painter->drawLine(origRect.center().x() - textW/2 - 2, lineY, 
+                             origRect.center().x() + textW/2 + 2, lineY);
+
+            // 2. 画折后价（遵循余额逻辑）
+            painter->setPen(priceColor);
+            painter->setFont(QFont("Microsoft YaHei", 10, QFont::Bold));
+            painter->drawText(QRectF(priceRect.x(), priceRect.y() + priceRect.height() / 2 - 2,
+                                      priceRect.width(), priceRect.height() / 2 + 2),
+                              Qt::AlignCenter, QString::number(m_price) + "g");
+        } else {
+            painter->setPen(priceColor);
+            painter->setFont(QFont("Microsoft YaHei", 10, QFont::Bold));
+            painter->drawText(priceRect, Qt::AlignCenter, QString::number(m_price) + "g");
+        }
+    }
+
 }
 
 void CardItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
     Q_UNUSED(event);
 
-    if (m_isGhost) {
+    if (m_isGhost || acceptedMouseButtons() == Qt::NoButton) {
         event->ignore(); // 把事件抛出去，不处理！
         return;
     }
@@ -246,9 +295,20 @@ void CardItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
     // 🔴【无敌金身】：悬浮状态绝对不允许触发缩回原位的代码！
     if (m_isSuspended) return;
 
+    // 🔴 动态捕获当前层级作为基准，防止悬停后跌落到蒙版下方喵！
+    if (!m_isHovered) {
+        m_defaultZ = zValue();
+    }
+
     m_isHovered = true;
-    setZValue(100);
+    setZValue(m_defaultZ + 100.0); // 在原有基础上提升，确保可见性
     setRotation(0.0);
+
+    // 🔴【救命稻草】：如果外部忘记调用 setHomeState，在悬停瞬间强行锚定当前位置！
+    // 否则卡牌会瞬间瞬移到 (0,0) 坐标（左上角），产生严重的视觉 Bug 喵！
+    if (m_homePos.isNull() && !pos().isNull()) {
+        m_homePos = pos();
+    }
 
     QPropertyAnimation* posAnim = new QPropertyAnimation(this, "pos");
     posAnim->setDuration(150);
@@ -291,7 +351,7 @@ void CardItem::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
     if (!m_isPlayable && !m_logicCard->isUnplayable()) return;
 
     m_isHovered = false;
-    setZValue(10);
+    setZValue(m_defaultZ); // 🔴 恢复到“家”的层级，解决变暗 Bug！
 
     QPropertyAnimation* scaleAnim = new QPropertyAnimation(this, "scale");
     scaleAnim->setDuration(150);
@@ -302,10 +362,17 @@ void CardItem::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
 }
 
 void CardItem::mousePressEvent(QGraphicsSceneMouseEvent* event) {
+    // Selection mode — fires cardClicked, skips all battle logic
+    if (m_isSelectionEnabled && event->button() == Qt::LeftButton) {
+        emit cardClicked(this);
+        event->accept();
+        return;
+    }
+
     BattleEngine* engine = BattleEngine::getInstance();
 
     if (m_isGhost) {
-        event->ignore(); // 把事件抛出去，不处理！
+        event->ignore();
         return;
     }
 

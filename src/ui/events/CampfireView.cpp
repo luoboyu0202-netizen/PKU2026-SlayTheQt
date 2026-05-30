@@ -1,5 +1,5 @@
 #include "CampfireView.h"
-#include "SelectableCardItem.h"
+#include "../carditem.h"
 #include <QTimer>
 #include <QVariantAnimation>
 #include <QParallelAnimationGroup>
@@ -439,19 +439,20 @@ void CampfireView::showCardSelector() {
     const int startX = 960 - (cols * cardW) / 2;
 
     for (int i = 0; i < candidates.size(); ++i) {
-        auto* item = new SelectableCardItem(candidates[i], nullptr);
+        auto* item = new CardItem(candidates[i]);
+        item->setSelectionEnabled(true);
         int col = i % cols;
         int row = i / cols;
         item->setPos(startX + col * cardW + cardW / 2, 320 + row * (cardH + 20));
-        item->setZValue(160); // 确保卡牌在遮罩之上
+        item->setZValue(160);
         m_scene->addItem(item);
         m_cardDisplayItems.append(item);
 
-        connect(item, &SelectableCardItem::clicked, this, [this, item](Card*) {
+        connect(item, &CardItem::cardClicked, this, [this, item](CardItem*) {
             for (auto* other : m_cardDisplayItems)
-                static_cast<SelectableCardItem*>(other)->setHighlighted(false);
+                static_cast<CardItem*>(other)->setHighlighted(false);
             item->setHighlighted(true);
-            m_selectedCard = item->card();
+            m_selectedCard = item->getLogicCard();
             if (m_confirmBtn) m_confirmBtn->show();
         });
     }
@@ -504,7 +505,7 @@ void CampfireView::cancelUpgrade() {
 }
 
 void CampfireView::runUpgradeAnimation(Card* card) {
-    auto* animCard = new SelectableCardItem(card, nullptr);
+    auto* animCard = new CardItem(card);
     animCard->setPos(960, 450);
     animCard->setZValue(110);
     animCard->setHighlighted(true);
