@@ -4,10 +4,16 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QImage>
 #include <QBitmap>
+#include <QPropertyAnimation>
 
 LeaveButton::LeaveButton(QGraphicsItem* parent) : QGraphicsObject(parent) {
     m_font = QFont("Microsoft YaHei", 20, QFont::Bold);
     setAcceptHoverEvents(true);
+    // ========================================================
+    // 🔴 设定物理锚点：因为你的 boundingRect 是 (-宽/2, -高/2)
+    // 所以它的原点就是最完美的正中心 (0, 0)！
+    // ========================================================
+    setTransformOriginPoint(0, 0);
 }
 
 void LeaveButton::setIcon(const QString& imagePath) {
@@ -22,7 +28,7 @@ void LeaveButton::setIcon(const QString& imagePath) {
                 }
             }
         }
-        m_icon = QPixmap::fromImage(img).scaled(360, 180, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        m_icon = QPixmap::fromImage(img).scaled(720, 360, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         m_width = m_icon.width();
         m_height = m_icon.height();
     }
@@ -72,12 +78,30 @@ void LeaveButton::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
     Q_UNUSED(event);
     m_isHovered = true;
     update();
+
+    // ========================================================
+    // 🌟 鼠标进入：极其丝滑地放大到 1.15 倍！
+    // ========================================================
+    QPropertyAnimation* anim = new QPropertyAnimation(this, "scale");
+    anim->setDuration(150); // 150 毫秒的极速弹起
+    anim->setEndValue(1.15);
+    anim->setEasingCurve(QEasingCurve::OutQuad); // 带有物理缓动的美学曲线
+    anim->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 void LeaveButton::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
     Q_UNUSED(event);
     m_isHovered = false;
     update();
+
+    // ========================================================
+    // 🌟 鼠标离开：极其丝滑地回弹到 1.0 倍！
+    // ========================================================
+    QPropertyAnimation* anim = new QPropertyAnimation(this, "scale");
+    anim->setDuration(150);
+    anim->setEndValue(1.0);
+    anim->setEasingCurve(QEasingCurve::OutQuad);
+    anim->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 void LeaveButton::mousePressEvent(QGraphicsSceneMouseEvent* event) {

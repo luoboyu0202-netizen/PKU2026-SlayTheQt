@@ -14,9 +14,11 @@ class GameWindow : public QWidget {
 public:
     explicit GameWindow(QWidget *parent = nullptr);
 
+    void enterCampfireEvent();
+
 private slots:
     // 接收地图的“开战”请求
-    void onBattleRequested(const MapNode& node);
+    void onMapNodeClicked(const MapNode& node);
     // 接收战斗结束的战报
     void onBattleConcluded(BattleResult result);
 

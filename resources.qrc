@@ -72,5 +72,7 @@
         <file>resources/images/ui/discard_pile.png</file>
         <file>resources/images/ui/draw_pile.png</file>
         <file>resources/images/ui/exhaust_pile.png</file>
+        <file>resources/images/events/Campfire/rear_side-removebg-preview.png</file>
+        <file>resources/images/events/Campfire/Bonfire.png</file>
     </qresource>
 </RCC>

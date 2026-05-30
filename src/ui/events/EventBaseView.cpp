@@ -3,6 +3,8 @@
 #include <QPropertyAnimation>
 #include <QGraphicsOpacityEffect>
 #include "../RelicTray.h"
+#include <QPropertyAnimation>
+#include <QGraphicsOpacityEffect>
 
 EventBaseView::EventBaseView(Player* player, CardManager* cardManager,
                              RelicManager* relicManager, QWidget* parent)
@@ -30,40 +32,27 @@ EventBaseView::EventBaseView(Player* player, CardManager* cardManager,
 }
 
 void EventBaseView::setupCommonUI() {
-    // 1. 左下角玩家画像（越肩视角）
-    m_playerPixmap.load(":/resources/images/ironclad.png");
-    if (!m_playerPixmap.isNull()) {
-        m_playerImage = new QGraphicsPixmapItem();
-        QPixmap scaled = m_playerPixmap.scaled(800, 1200, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        m_playerImage->setPixmap(scaled);
-        m_playerImage->setPos(playerImagePos());
-        m_playerImage->setZValue(50); 
-        m_scene->addItem(m_playerImage);
-    }
+    // ========================================================
+    // 🔴 架构大扫除：剥夺基类的硬编码贴图权！
+    // 基类只负责准备好用来挂贴图的“空画板”，绝对不写死任何具体路径！
+    // ========================================================
+    m_playerImage = new QGraphicsPixmapItem();
+    m_playerImage->setZValue(50); // 默认层级
+    m_scene->addItem(m_playerImage); // 把空画板挂到场景里
 
-    // 2. 右下角离开按钮
+    // 2. 右下角离开按钮（保留，这是通用的）
     m_leaveBtn = new LeaveButton();
     m_leaveBtn->setPos(leaveButtonPos());
     m_leaveBtn->setZValue(120);
     m_scene->addItem(m_leaveBtn);
 
+    // ========================================================
+    // 🟢 极简主义归位：点击按钮，直接向上级汇报！绝不多管闲事！
+    // ========================================================
     connect(m_leaveBtn, &LeaveButton::clicked, this, [this]() {
         emit eventFinished();
     });
 
-    // 3. 顶部状态栏（最后添加以确保显示，强制 (0,0)）
-    m_topBar = new TopBar();
-    m_topBar->bindPlayer(m_player);
-    m_topBar->setPos(0, 0);
-    m_topBar->setZValue(200);
-    m_scene->addItem(m_topBar);
-
-    // 4. 遗物栏（匹配战斗模块布局）
-    m_relicTray = new RelicTray();
-    m_relicTray->bindManager(m_relicManager);
-    m_relicTray->setPos(450, 6); // 在角色名和HP右侧
-    m_relicTray->setZValue(200);
-    m_scene->addItem(m_relicTray);
 }
 
 QPointF EventBaseView::playerImagePos() const {
@@ -71,7 +60,7 @@ QPointF EventBaseView::playerImagePos() const {
 }
 
 QPointF EventBaseView::leaveButtonPos() const {
-    return QPointF(1530, 865);
+    return QPointF(1650, 920);
 }
 
 void EventBaseView::setLeaveButtonVisible(bool visible) {
@@ -82,7 +71,7 @@ void EventBaseView::setLeaveButtonVisible(bool visible) {
 
 void EventBaseView::showDarkOverlay(const QString& text) {
     if (!m_darkOverlay) {
-        m_darkOverlay = new QGraphicsRectItem(0, 0, 1920, 1080);
+        m_darkOverlay = new QGraphicsRectItem(-5000, -5000, 12000, 12000);
         m_darkOverlay->setBrush(QColor(0, 0, 0, 80));
         m_darkOverlay->setZValue(95);
         m_scene->addItem(m_darkOverlay);
@@ -121,3 +110,4 @@ void EventBaseView::hideDarkOverlay() {
         m_overlayText = nullptr;
     }
 }
+

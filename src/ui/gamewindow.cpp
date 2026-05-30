@@ -7,6 +7,7 @@
 #include <QGraphicsScene>
 #include "ui/TopBar.h"
 #include "ui/CardBrowserOverlay.h"
+#include "events/CampfireView.h" // 🔴 确保引入了火堆界面！
 // (确保顶部引入了 TopBar.h)
 
 GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), m_currentBattleView(nullptr) {
@@ -70,7 +71,7 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
     m_topBarView->raise(); // 再次提权，确保 TopBar 是全游戏绝对的最顶层！
 
     connect(m_rewardScreen, &RewardScreen::proceedRequested, this, &GameWindow::onRewardProceedRequested);
-    connect(m_mapManager, &MapManager::battleRequested, this, &GameWindow::onBattleRequested);
+    connect(m_mapManager, &MapManager::nodeClicked, this, &GameWindow::onMapNodeClicked);
 
     // 幕布逻辑保持不变
     m_curtain = new QWidget(this);
@@ -193,62 +194,65 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
     });
 }
 
-void GameWindow::onBattleRequested(const MapNode& node) {
+void GameWindow::onMapNodeClicked(const MapNode& node) {
     m_lastClickedNode = node;
+    if (node.type == "Monster" || node.type == "Elite" || node.type == "Boss") {
+        m_curtain->raise();
+        m_curtain->show();
+        m_fadeAnimation->stop();
+        m_fadeAnimation->setStartValue(0.0);
+        m_fadeAnimation->setEndValue(1.0);
+        m_fadeAnimation->disconnect();
 
-    m_curtain->raise();
-    m_curtain->show();
-    m_fadeAnimation->stop();
-    m_fadeAnimation->setStartValue(0.0);
-    m_fadeAnimation->setEndValue(1.0);
-    m_fadeAnimation->disconnect();
+        connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, node]() {
+            BattleContext context;
+            GlobalSaveData* save = GlobalSaveData::getInstance();
+            context.currentHp = save->currentHp;
+            context.maxHp = save->maxHp;
+            context.gold = save->gold;
+            context.maxEnergy = save->maxEnergy;
 
-    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, node]() {
-        BattleContext context;
-        GlobalSaveData* save = GlobalSaveData::getInstance();
-        context.currentHp = save->currentHp;
-        context.maxHp = save->maxHp;
-        context.gold = save->gold;
-        context.maxEnergy = save->maxEnergy;
+            // 疯狂印卡、造遗物...
+            for (const QString& id : save->deckIds) context.currentDeck.append(CardFactory::createCard(id, nullptr));
+            for (const QString& id : save->relicIds) context.relics.append(RelicFactory::createRelic(id, nullptr));
 
-        // 疯狂印卡、造遗物...
-        for (const QString& id : save->deckIds) context.currentDeck.append(CardFactory::createCard(id, nullptr));
-        for (const QString& id : save->relicIds) context.relics.append(RelicFactory::createRelic(id, nullptr));
+            // =======================================================
+            // 🔴 核心解耦：抹除硬编码！我们只把“标签”塞进密令里发往战斗引擎！
+            // =======================================================
+            context.nodeType = node.type;       // "Monster", "Elite", "Boss" 等
+            context.currentLayer = node.layer;  // 0 ~ 14 层
 
-        // =======================================================
-        // 🔴 核心解耦：抹除硬编码！我们只把“标签”塞进密令里发往战斗引擎！
-        // =======================================================
-        context.nodeType = node.type;       // "Monster", "Elite", "Boss" 等
-        context.currentLayer = node.layer;  // 0 ~ 14 层
+            m_launcher = new BattleLauncher(this);
+            connect(m_launcher, &BattleLauncher::battleConcluded, this, &GameWindow::onBattleConcluded);
 
-        m_launcher = new BattleLauncher(this);
-        connect(m_launcher, &BattleLauncher::battleConcluded, this, &GameWindow::onBattleConcluded);
-
-        m_currentBattleView = m_launcher->launch(context);
-        m_stack->addWidget(m_currentBattleView);
-        m_stack->setCurrentWidget(m_currentBattleView);
+            m_currentBattleView = m_launcher->launch(context);
+            m_stack->addWidget(m_currentBattleView);
+            m_stack->setCurrentWidget(m_currentBattleView);
 
         // ========================================================
         // 🔴 3. 极其关键的生命线：让全局顶栏认主！
         // ========================================================
-        if (m_currentBattleView && m_currentBattleView->getEngine()) {
-            Player* player = m_currentBattleView->getEngine()->getPlayer();
-            if (player) {
-                // 让全局的 TopBar 绑定刚刚在战斗沙盒里生成的玩家！
-                m_topBar->bindPlayer(player);
+            if (m_currentBattleView && m_currentBattleView->getEngine()) {
+                Player* player = m_currentBattleView->getEngine()->getPlayer();
+                if (player) {
+                    // 让全局的 TopBar 绑定刚刚在战斗沙盒里生成的玩家！
+                    m_topBar->bindPlayer(player);
+                }
             }
-        }
 
         m_fadeAnimation->disconnect();
         m_fadeAnimation->setStartValue(1.0);
         m_fadeAnimation->setEndValue(0.0);
-        connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+            connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
             m_curtain->hide();
+           });
+           m_fadeAnimation->start();
         });
-        m_fadeAnimation->start();
-    });
 
-    m_fadeAnimation->start();
+        m_fadeAnimation->start();
+    }else if (node.type == "Campfire") {
+        enterCampfireEvent(); // 调用我们专门写的新函数！
+    }
 }
 
 void GameWindow::onBattleConcluded(BattleResult result) {
@@ -302,5 +306,100 @@ void GameWindow::onRewardProceedRequested() {
         m_fadeAnimation->start();
     });
 
+    m_fadeAnimation->start();
+}
+
+void GameWindow::enterCampfireEvent() {
+    qDebug() << "[GameWindow] 拦截成功！开始安营扎寨！准备降下黑幕...";
+
+    // ========================================================
+    // 🎬 1. 入场：降下全局黑幕
+    // ========================================================
+    m_curtain->raise();
+    m_curtain->show();
+    m_fadeAnimation->stop();
+    m_fadeAnimation->setStartValue(0.0);
+    m_fadeAnimation->setEndValue(1.0);
+    m_fadeAnimation->disconnect(); // 极其良好的习惯：清空上一次的槽函数
+
+    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+
+        // ========================================================
+        // ⛺ 2. 幕后布置：黑屏遮挡完毕，开始在后方搭建火堆场景
+        // ========================================================
+        CampfireView* campfireView = new CampfireView(nullptr, nullptr, nullptr, this);
+
+        // 恢复 16:9 黄金比例，彻底消灭黑边
+        campfireView->setGeometry(-5, -5, 1610, 910);
+
+        // 🔴 极其关键的层级控制：先放火堆，再压顶栏，最后把黑幕提回最上层！
+        campfireView->raise();
+        m_topBarView->raise();
+        m_curtain->raise();
+
+        campfireView->show();
+
+        // 接入通讯天线
+        connect(campfireView, &CampfireView::playerStatusChanged, this, [this]() {
+            GlobalSaveData* save = GlobalSaveData::getInstance();
+            m_topBar->updateHp(save->currentHp, save->maxHp);
+        });
+
+        connect(campfireView, &CampfireView::deckUpdated, this, [this]() {
+            m_topBar->refreshDeckCount();
+        });
+
+        // ========================================================
+        // 🎬 3. 退场逻辑：拦截火堆的退出请求，再次降下黑幕！
+        // ========================================================
+        connect(campfireView, &EventBaseView::eventFinished, this, [this, campfireView]() {
+            qDebug() << "[GameWindow] 🔥 玩家休息完毕，准备降下黑幕返回地图！";
+
+            m_curtain->raise();
+            m_curtain->show();
+            m_fadeAnimation->stop();
+            m_fadeAnimation->setStartValue(0.0);
+            m_fadeAnimation->setEndValue(1.0);
+            m_fadeAnimation->disconnect();
+
+            connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, campfireView]() {
+
+                // 🗑️ 黑屏彻底遮挡后：销毁火堆视图
+                campfireView->hide();
+                campfireView->deleteLater();
+
+                // 🗺️ 推进大地图进度
+                m_mapManager->m_currentLayer = m_lastClickedNode.layer;
+                m_mapManager->m_currentNodeId = m_lastClickedNode.id;
+                m_mapManager->m_visitedNodes.append(m_lastClickedNode.id);
+                m_mapManager->refreshNodeStates();
+
+                // 🌟 重新揭开幕布，重见大地图
+                m_fadeAnimation->disconnect();
+                m_fadeAnimation->setStartValue(1.0);
+                m_fadeAnimation->setEndValue(0.0);
+                connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+                    m_curtain->hide();
+                });
+                m_fadeAnimation->start();
+            });
+
+            m_fadeAnimation->start();
+        });
+
+        // ========================================================
+        // 🌟 4. 入场收尾：场景搭建完毕，拉开幕布，重见光明！
+        // ========================================================
+        m_fadeAnimation->disconnect();
+        m_fadeAnimation->setStartValue(1.0);
+        m_fadeAnimation->setEndValue(0.0);
+        connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+            m_curtain->hide();
+        });
+        m_fadeAnimation->start();
+
+    });
+
+    // 🚀 启动第一步的入场黑幕！
     m_fadeAnimation->start();
 }
