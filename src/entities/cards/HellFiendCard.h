@@ -18,6 +18,7 @@ public:
 
         m_type = CardType::Power;
         m_target = CardTarget::None;
+        m_rarity = CardRarity::Rare;
         m_imagePath = ":/resources/images/cards/hell_fiend.png";
     }
 

@@ -20,6 +20,17 @@ enum class CardType {
 };
 
 // ==========================================
+// 1.5 定义卡牌的稀有度字典
+// ==========================================
+enum class CardRarity {
+    Starter,    // 初始牌（如打击、防御）
+    Common,     // 普通（白色）
+    Uncommon,   // 罕见（蓝色）
+    Rare,       // 稀有（金色）
+    Special     // 特殊（如衍生牌）
+};
+
+// ==========================================
 // 2. 定义卡牌的目标类型字典
 // ==========================================
 enum class CardTarget {
@@ -46,6 +57,7 @@ public:
         , m_description("")      // 顺手给描述赋个空初值，防止野指针喵
         , m_type(CardType::Attack) // 默认给个安全的初值
         , m_target(CardTarget::None)
+        , m_rarity(CardRarity::Common) // 默认普通稀有度
     {
         // 这里留空就可以啦，因为所有工作都在上面的初始化列表（Colon Initializer List）里做完啦喵！
     }
@@ -76,6 +88,7 @@ public:
     int getCost() const { return m_cost; }
     CardType getType() const { return m_type; }              // 新增：判断是否受某些遗物影响
     CardTarget getTarget() const { return m_target; }        // 新增：判断划线逻辑
+    CardRarity getRarity() const { return m_rarity; }        // 新增：商店定价逻辑依据
 
 
     // 核心接口：打出这张牌的实际逻辑（由子类实现）
@@ -122,6 +135,7 @@ protected:
 
     // 🔴【新增】：X 费牌专属视觉标记！
     bool m_isXCost = false;
+    CardRarity m_rarity;
 
 public:
     // ========================================================

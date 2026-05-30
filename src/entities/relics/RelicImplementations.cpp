@@ -7,6 +7,7 @@ OrichalcumRelic::OrichalcumRelic(QObject* parent)
             QStringLiteral("如果你的回合结束时没有 格挡 ，获得 6 点 格挡 。"),
             parent) {
     m_counter = -1;
+    m_imagePath = ":/resources/images/relics/relic_orichalcum.png";
 }
 
 void OrichalcumRelic::onTurnEnd() {
@@ -25,6 +26,7 @@ PenNibRelic::PenNibRelic(QObject* parent)
             QStringLiteral("你每打出 10 张 攻击 牌，下一次攻击造成 双倍 伤害。"), 
             parent) {
     m_counter = 0;
+    m_imagePath = ":/resources/images/relics/relic_pen_nib.png";
 }
 
 int PenNibRelic::modifyAttackDamage(int currentDamage) {

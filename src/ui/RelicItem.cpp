@@ -37,20 +37,32 @@ void RelicItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 
     painter->setRenderHint(QPainter::Antialiasing);
 
-    // 1. 绘制遗物底色/边框 (暂用深灰色圆形代替图标)
-    painter->setPen(QPen(QColor(200, 200, 200), 2));
-    painter->setBrush(QColor(40, 40, 45));
-    painter->drawEllipse(2, 2, 44, 44);
+    // 1. 尝试加载真实图标
+    QPixmap pix;
+    if (m_logicRelic && !m_logicRelic->getImagePath().isEmpty()) {
+        pix.load(m_logicRelic->getImagePath());
+    }
 
-    // 2. 绘制首字母缩写模拟图标
-    painter->setPen(Qt::white);
-    QFont font = painter->font();
-    font.setPixelSize(12);
-    painter->setFont(font);
-    painter->drawText(boundingRect(), Qt::AlignCenter, m_logicRelic->getName().left(1));
+    if (!pix.isNull()) {
+        // 绘制真实图标
+        painter->drawPixmap(boundingRect().toRect(), pix);
+    } else {
+        // 2. 兜底绘制：底色/边框 (暂用深灰色圆形代替图标)
+        painter->setPen(QPen(QColor(200, 200, 200), 2));
+        painter->setBrush(QColor(40, 40, 45));
+        painter->drawEllipse(2, 2, 44, 44);
 
-    // 3. 绘制计数值 (如果有)
+        // 3. 绘制首字母缩写模拟图标
+        painter->setPen(Qt::white);
+        QFont font = painter->font();
+        font.setPixelSize(12);
+        painter->setFont(font);
+        painter->drawText(boundingRect(), Qt::AlignCenter, m_logicRelic->getName().left(1));
+    }
+
+    // 4. 绘制计数值 (如果有)
     if (m_displayCounter >= 0) {
+        QFont font = painter->font();
         font.setPixelSize(14);
         font.setBold(true);
         painter->setFont(font);

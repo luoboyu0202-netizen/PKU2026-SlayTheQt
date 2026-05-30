@@ -19,6 +19,7 @@ public:
 
         m_type = CardType::Skill;
         m_target = CardTarget::Player; // 或者 CardTarget::None 都可以喵
+        m_rarity = CardRarity::Starter;
         m_imagePath = ":/resources/images/cards/defend.png";
     }
 
