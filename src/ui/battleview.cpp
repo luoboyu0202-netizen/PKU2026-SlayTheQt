@@ -78,20 +78,20 @@ void BattleView::playShuffleAnimation() {
 }
 
 void BattleView::initStageInfrastructure() {
-    m_topBar = new TopBar();
-    m_scene->addItem(m_topBar);
+    // m_topBar = new TopBar();
+    // m_scene->addItem(m_topBar);
 
-    m_relicTray = new RelicTray();
-    m_relicTray->setPos(10, 70);
-    m_relicTray->setZValue(5000);
-    m_scene->addItem(m_relicTray);
+    // m_relicTray = new RelicTray();
+    // m_relicTray->setPos(10, 70);
+    // m_relicTray->setZValue(5000);
+    // m_scene->addItem(m_relicTray);
 
     m_drawPileUI = new PileItem(QStringLiteral("抽牌堆"));
-    m_drawPileUI->setPos(120, 950);
+    m_drawPileUI->setPos(80, 1000);
     m_scene->addItem(m_drawPileUI);
 
     m_discardPileUI = new PileItem(QStringLiteral("弃牌堆"));
-    m_discardPileUI->setPos(1800, 950);
+    m_discardPileUI->setPos(1850, 1000);
     m_scene->addItem(m_discardPileUI);
 
     // ========================================================
@@ -262,7 +262,7 @@ void BattleView::bindEngine(BattleEngine* engine) {
     // 后续绑定逻辑保持原样
     // ========================================================
     // 3. 将玩家数据绑定给那些嗷嗷待哺的固定 UI 组件
-    m_topBar->bindPlayer(playerLogic);
+    // m_topBar->bindPlayer(playerLogic);
     m_energyBall->bindPlayer(playerLogic);
 
     // 4. 实例化手牌阵列管家（将场景和逻辑卡牌缝合）
@@ -637,12 +637,6 @@ void BattleView::resizeEvent(QResizeEvent* event) {
     // 🟢【黑魔法】：全自动等比例缩放视口，确保 1920x1080 的战局永远完美塞在窗口里！
     if (m_scene) {
         fitInView(m_scene->sceneRect(), Qt::KeepAspectRatio);
-    }
-}
-
-void BattleView::bindRelics(RelicManager* relicManager) {
-    if (m_relicTray && relicManager) {
-        m_relicTray->bindManager(relicManager);
     }
 }
 

@@ -261,7 +261,7 @@ void RewardScreen::animateAndRemoveItem(RewardItemButton* btn) {
     GlobalSaveData* save = GlobalSaveData::getInstance();
 
     if (btn->getType() == RewardItemButton::Gold) {
-        targetPos = QPoint(1480, 24);
+        targetPos = QPoint(1200, 24);
     }
     else if (btn->getType() == RewardItemButton::Relic) {
         // 🔴 极其聪明的位置预判：
@@ -271,7 +271,7 @@ void RewardScreen::animateAndRemoveItem(RewardItemButton* btn) {
         if (currentRelicIndex < 0) currentRelicIndex = 0;
 
         int trayStartX = 10;
-        int trayStartY = 70;
+        int trayStartY = 55;
         int spacing = 8;
 
         targetPos = QPoint(trayStartX + currentRelicIndex * (48 + spacing), trayStartY);
@@ -299,6 +299,9 @@ void RewardScreen::animateAndRemoveItem(RewardItemButton* btn) {
             emit relicFlightFinished(rId);
         } else if (type == RewardItemButton::Gold) {
             emit goldFlightFinished(gAmount);
+        } else if (type == RewardItemButton::Card) {
+            // 🔴【新增】：卡牌幽灵飞到总牌库了！大喊一声！
+            emit deckUpdated();
         }
     });
 

@@ -1,11 +1,24 @@
 #include "TopBar.h"
 #include <QPainter>
 #include <QPainterPath>
+#include <QDebug>
+#include "../logic/GlobalSaveData.h" // 🔴 必须包含
 
 TopBar::TopBar(QGraphicsItem* parent)
     : QGraphicsObject(parent), m_playerName(""), m_hp(0), m_maxHp(0),
-      m_energy(0), m_maxEnergy(0), m_gold(0), m_block(0) {
-    m_uiFont = QFont("Arial", 16, QFont::Bold); // 使用更通用的字体
+    m_energy(0), m_maxEnergy(0), m_gold(0), m_block(0) {
+    m_uiFont = QFont("Arial", 16, QFont::Bold);
+
+    // ========================================================
+    // 🃏 挂载全局牌堆图标（父对象设为 this，跟着 TopBar 混！）
+    // ========================================================
+    m_masterDeckPile = new PileItem("总牌组", this);
+
+    // 🔴 极其精确的狙击：完美对齐我们在 RewardScreen 写的终点坐标！
+    m_masterDeckPile->setPos(1400, 32);
+
+    // 连通点击神经
+    connect(m_masterDeckPile, &PileItem::clicked, this, &TopBar::onDeckPileClicked);
 }
 
 void TopBar::bindPlayer(Player* player) {
@@ -33,23 +46,19 @@ void TopBar::updateEnergy(int current, int max) { m_energy = current; m_maxEnerg
 void TopBar::updateGold(int current) { m_gold = current; update(); }
 
 QRectF TopBar::boundingRect() const {
-    return QRectF(0, 0, 1920, 60);
+    return QRectF(0, 0, 1600, 60);
 }
 
 void TopBar::paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) {
     painter->setRenderHint(QPainter::Antialiasing);
 
-    // ---- 深黑褐背景（稍微调亮，增加辨识度） ----
-    painter->fillRect(QRectF(0, 0, 1920, 48), QColor(45, 38, 30, 255));
-    
-    // 亮色顶边确认渲染
+    // ---- 深黑褐背景 ----
+    painter->fillRect(QRectF(0, 0, 1600, 48), QColor(45, 38, 30, 255));
+
     painter->setPen(QPen(QColor(220, 180, 100), 2));
-    painter->drawLine(0, 0, 1920, 0);
-
-    // ---- 底部金色装饰线 ----
+    painter->drawLine(0, 0, 1600, 0);
     painter->setPen(QPen(QColor(180, 150, 100), 1.5));
-    painter->drawLine(0, 48, 1920, 48);
-
+    painter->drawLine(0, 48, 1600, 48);
     painter->setFont(m_uiFont);
 
     // ---- 1. 角色名称 ----
@@ -72,11 +81,28 @@ void TopBar::paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*)
     QString hpText = QString("%1 / %2").arg(m_hp).arg(m_maxHp);
     painter->drawText(QRectF(hx + 20, 0, 150, 48), Qt::AlignLeft | Qt::AlignVCenter, hpText);
 
-    // ---- 3. 金币 ----
+    // ---- 3. 金币 (🔴 挪到 X=1200 的位置，完美避开 1400 的牌库) ----
     painter->setBrush(QColor(230, 190, 50));
     painter->setPen(QPen(QColor(160, 120, 20), 1.5));
-    painter->drawEllipse(QPointF(1780, 24), 8, 8);
+    painter->drawEllipse(QPointF(1200, 24), 8, 8);
 
     painter->setPen(QColor(230, 190, 50));
-    painter->drawText(QRectF(1795, 0, 100, 48), Qt::AlignLeft | Qt::AlignVCenter, QString::number(m_gold));
+    // 文字也跟着挪过来
+    painter->drawText(QRectF(1215, 0, 100, 48), Qt::AlignLeft | Qt::AlignVCenter, QString::number(m_gold));
+}
+
+// ========================================================
+// 🔄 刷新数字大屏
+// ========================================================
+void TopBar::refreshDeckCount() {
+    int count = GlobalSaveData::getInstance()->deckIds.size();
+    m_masterDeckPile->updateCount(count);
+}
+
+// ========================================================
+// 👁️ 召唤阅兵结界：把活儿甩给最高司令部！
+// ========================================================
+void TopBar::onDeckPileClicked() {
+    qDebug() << "[TopBar] 玩家点击了总牌库！向最高司令部请求全屏支援！";
+    emit deckViewRequested(); // 🔴 发射信号！
 }

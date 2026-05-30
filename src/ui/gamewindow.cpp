@@ -3,8 +3,13 @@
 #include "../logic/CardFactory.h"
 #include "../logic/RelicFactory.h"
 #include <QVBoxLayout>
-#include <QScrollArea> // 提供滚动视口
-#include <QScroller>   // 提供触摸拖拽与物理惯性
+#include <QGraphicsView>
+#include <QGraphicsScene>
+#include "ui/TopBar.h"
+#include "ui/CardBrowserOverlay.h"
+#include "events/CampfireView.h"
+#include <QScrollArea> // 队友提供：滚动视口
+#include <QScroller>   // 队友提供：触摸拖拽与物理惯性
 
 GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), m_currentBattleView(nullptr) {
     // 1. 设置游戏主窗口大小
@@ -18,142 +23,272 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
     layout->addWidget(m_stack);
 
     // ==========================================
-    // 🔴 实例化开始界面，并塞进频道 0
+    // 🎬 实例化开始界面，并塞进频道 0
     // ==========================================
     m_titleView = new TitleMenuView(this);
-    m_stack->addWidget(m_titleView); // 📺 频道 0：开始界面！
+    m_stack->addWidget(m_titleView); // 📺 频道 0：开始界面
 
     // 3. 实例化大地图，并准备塞进频道 1
     m_mapManager = new MapManager();
 
-    // 用 ScrollArea 把地图包起来，作为摄像机视口
+    // ==========================================
+    // 🗺️ 队友的魔法：用 QScroller 包装大地图，实现物理拖拽！
+    // ==========================================
     QScrollArea* mapScroll = new QScrollArea();
     mapScroll->setWidget(m_mapManager);
     mapScroll->setAlignment(Qt::AlignCenter);
-
-    // 🌟 魔法步骤 1：禁止 ScrollArea 压缩地图，保持地图原始长度以产生滚动区间
     mapScroll->setWidgetResizable(false);
-
-    // 🌟 魔法步骤 2：隐藏丑陋的原生滚动条（依然可以滚，只是变纯净了）
     mapScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     mapScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-    // 🌟 魔法步骤 3：QScroller 强行接管！开启鼠标左键按住拖拽与物理惯性
     QScroller::grabGesture(mapScroll, QScroller::LeftMouseButtonGesture);
 
-    // 🔧 魔法步骤 4：精调物理引擎，增加摩擦力，减小惯性！
     QScroller *scroller = QScroller::scroller(mapScroll);
     QScrollerProperties props = scroller->scrollerProperties();
     props.setScrollMetric(QScrollerProperties::DecelerationFactor, 0.6); // 增大减速阻力
     props.setScrollMetric(QScrollerProperties::MaximumVelocity, 0.55);   // 限制最大甩动速度
     scroller->setScrollerProperties(props);
 
-    // ==========================================
-    // 🔴 将地图加入电视机！注意，现在它是频道 1！
-    // ==========================================
     m_stack->addWidget(mapScroll); // 📺 频道 1：大地图！
 
     // 默认显示频道 0（开始界面）
     m_stack->setCurrentWidget(m_titleView);
 
     // ==========================================
+    // 🌟 全局悬浮图层 (包容 TopBar 和 你的完美 RelicTray)
+    // ==========================================
+    m_topBarView = new QGraphicsView(this);
+    m_topBarView->setFixedSize(1600, 110);
+    m_topBarView->move(0, 0);
+
+    m_topBarView->setStyleSheet("background: transparent; border: none;");
+    m_topBarView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_topBarView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_topBarView->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+
+    QGraphicsScene* topScene = new QGraphicsScene(0, 0, 1600, 110, this);
+    m_topBarView->setScene(topScene);
+
+    // 1. 放入顶栏
+    m_topBar = new TopBar();
+    topScene->addItem(m_topBar);
+
+    // 2. 放入遗物栏
+    m_globalRelicTray = new RelicTray();
+    m_globalRelicTray->setPos(10, 55);
+    topScene->addItem(m_globalRelicTray);
+
+    m_topBarView->raise();
+    // 🔴 初始状态下隐藏顶栏，等开始游戏后再显示
+    m_topBarView->hide();
+
+    // ==========================================
     // 🎁 将战利品界面作为“全局幽灵悬浮层”！
     // ==========================================
-    m_rewardScreen = new RewardScreen(this); // 直接挂在 GameWindow 下
-    m_rewardScreen->move(0, 0); // 从屏幕左上角铺满
-    m_rewardScreen->hide(); // 默认隐藏！
+    m_rewardScreen = new RewardScreen(this);
+    m_rewardScreen->move(0, 0);
+    m_rewardScreen->hide();
+
+    m_rewardScreen->raise();
+    m_topBarView->raise(); // 确保 TopBar 是全游戏绝对的最顶层！
+
+    // ==========================================
+    // 📡 绑定各大系统的通讯天线
+    // ==========================================
     connect(m_rewardScreen, &RewardScreen::proceedRequested, this, &GameWindow::onRewardProceedRequested);
-
-    // 4. 接好情报通讯线！
-    connect(m_mapManager, &MapManager::battleRequested, this, &GameWindow::onBattleRequested);
-
-    // ==========================================
-    // 🔴 初始化全局黑幕 (复用你写好的动画系统)
-    // ==========================================
-    m_curtain = new QWidget(this);
-    m_curtain->resize(1600, 900); // 绝对覆盖全屏！
-    m_curtain->setStyleSheet("background-color: #000000;"); // 纯正的黑！
-    m_curtain->hide(); // 默认藏起来
-
-    // 给幕布附魔透明度效果
-    m_curtainEffect = new QGraphicsOpacityEffect(m_curtain);
-    m_curtainEffect->setOpacity(0.0); // 初始完全透明
-    m_curtain->setGraphicsEffect(m_curtainEffect);
-
-    // 绑定动画引擎，修改的属性叫 "opacity" (透明度)
-    m_fadeAnimation = new QPropertyAnimation(m_curtainEffect, "opacity", this);
-    m_fadeAnimation->setDuration(350); // 🌟 350毫秒的丝滑时长
-
+    connect(m_mapManager, &MapManager::nodeClicked, this, &GameWindow::onMapNodeClicked);
     // 🔴 监听开始界面的“开战信号”，执行启动游戏动画
     connect(m_titleView, &TitleMenuView::startGameRequested, this, &GameWindow::handleStartGameTransition);
+
+    // ==========================================
+    // ⬛ 初始化全局黑幕
+    // ==========================================
+    m_curtain = new QWidget(this);
+    m_curtain->resize(1600, 900);
+    m_curtain->setStyleSheet("background-color: #000000;");
+    m_curtain->hide();
+
+    m_curtainEffect = new QGraphicsOpacityEffect(m_curtain);
+    m_curtainEffect->setOpacity(0.0);
+    m_curtain->setGraphicsEffect(m_curtainEffect);
+
+    m_fadeAnimation = new QPropertyAnimation(m_curtainEffect, "opacity", this);
+    m_fadeAnimation->setDuration(350);
+    m_curtain->raise();
 
     // =======================================================
     // 🎁 接收飞行抵达信号，更新底层 UI 与全局存档！
     // =======================================================
     connect(m_rewardScreen, &RewardScreen::relicFlightFinished, this, [this](QString relicId) {
         GlobalSaveData::getInstance()->relicIds.append(relicId);
-        qDebug() << "[GameWindow] 🏺 遗物飞行抵达！已正式入账：" << relicId;
+        Relic* newRelic = RelicFactory::createRelic(relicId, this);
+        m_globalRelicTray->onNewRelicAdded(newRelic);
 
-        if (m_currentBattleView) {
-            // 1. 造出实体
-            Relic* newRelic = RelicFactory::createRelic(relicId, m_currentBattleView);
-
-            // 2. 🔴 极其精准的层级穿透：View -> Engine -> RelicManager !
-            BattleEngine* engine = m_currentBattleView->getEngine();
-            if (engine && engine->m_relicManager) {
-                engine->m_relicManager->addRelic(newRelic);
-            }
+        if (m_currentBattleView && m_currentBattleView->getEngine()) {
+            m_currentBattleView->getEngine()->m_relicManager->addRelic(newRelic);
         }
     });
 
     connect(m_rewardScreen, &RewardScreen::goldFlightFinished, this, [this](int amount) {
-        // 1. 金币正式入账！
         GlobalSaveData::getInstance()->gold += amount;
-        qDebug() << "[GameWindow] 💰 金币飞行抵达！当前余额：" << GlobalSaveData::getInstance()->gold;
+        m_topBar->updateGold(GlobalSaveData::getInstance()->gold);
 
-        // 2. 更新底层的 TopBar 余额显示
-        if (m_currentBattleView) {
-            Player* p = m_currentBattleView->getEngine()->getPlayer();
-            if (p) p->setGold(GlobalSaveData::getInstance()->gold);
+        if (m_currentBattleView && m_currentBattleView->getEngine()->getPlayer()) {
+            m_currentBattleView->getEngine()->getPlayer()->setGold(GlobalSaveData::getInstance()->gold);
         }
     });
+
+    connect(m_rewardScreen, &RewardScreen::deckUpdated, this, [this]() {
+        m_topBar->refreshDeckCount();
+    });
+
+    // ========================================================
+    // 🌌 极其优雅的“呼吸式同步膨胀”！(牌库查看)
+    // ========================================================
+    connect(m_topBar, &TopBar::deckViewRequested, this, [this, topScene]() {
+        m_topBarView->setFixedSize(1600, 900);
+        topScene->setSceneRect(0, 0, 1600, 900);
+
+        QList<QString> deckIds = GlobalSaveData::getInstance()->deckIds;
+        QList<Card*> displayCards;
+        for (const QString& id : deckIds) {
+            displayCards.append(CardFactory::createCard(id));
+        }
+
+        CardBrowserOverlay* overlay = new CardBrowserOverlay(displayCards, "你的牌組", 1600, 900);
+        overlay->setZValue(9999);
+        topScene->addItem(overlay);
+
+        connect(overlay, &CardBrowserOverlay::closed, this, [this, overlay, displayCards, topScene]() {
+            overlay->hide();
+            overlay->deleteLater();
+            qDeleteAll(displayCards);
+
+            m_topBarView->setFixedSize(1600, 110);
+            topScene->setSceneRect(0, 0, 1600, 110);
+        });
+    });
+
+    // ========================================================
+    // 🛡️ 顶栏数据与遗物读档唤醒
+    // ========================================================
+    GlobalSaveData* save = GlobalSaveData::getInstance();
+    if (m_topBar) {
+        m_topBar->updatePlayerName(QStringLiteral("铁甲战士"));
+        m_topBar->updateHp(save->currentHp, save->maxHp);
+        m_topBar->updateGold(save->gold);
+        m_topBar->refreshDeckCount();
+    }
+
+    if (m_globalRelicTray) {
+        for (const QString& relicId : save->relicIds) {
+            Relic* loadedRelic = RelicFactory::createRelic(relicId, this);
+            if (loadedRelic) {
+                if (save->relicCounters.contains(relicId)) {
+                    loadedRelic->setCounter(save->relicCounters[relicId]);
+                }
+                m_globalRelicTray->onNewRelicAdded(loadedRelic);
+            }
+        }
+    }
 }
 
 // ==========================================
-// 🔴 新增：处理“开始游戏”的黑场转场动画
+// 🎬 新增：处理“开始游戏”的黑场转场动画
 // ==========================================
 void GameWindow::handleStartGameTransition() {
-    // 1. 盖上黑布
     m_curtain->raise();
     m_curtain->show();
     m_fadeAnimation->stop();
     m_fadeAnimation->setStartValue(0.0);
     m_fadeAnimation->setEndValue(1.0);
-    m_fadeAnimation->disconnect(); // 断开之前的回调
+    m_fadeAnimation->disconnect();
 
-    // 当完全变黑时...
     connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
-
-        // 🔴 趁着屏幕全黑，偷偷把频道切换到 1（大地图）
+        // 🔴 切换到频道 1（大地图），并唤醒顶栏
         m_stack->setCurrentIndex(1);
+        m_topBarView->show();
+        m_topBarView->raise();
 
-        // 执行淡出动画，让大地图亮起来
         m_fadeAnimation->disconnect();
         m_fadeAnimation->setStartValue(1.0);
         m_fadeAnimation->setEndValue(0.0);
 
         connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
-            m_curtain->hide(); // 彻底隐藏幕布
+            m_curtain->hide();
         });
         m_fadeAnimation->start();
     });
 
-    // 启动淡入动画
     m_fadeAnimation->start();
 }
 
-void GameWindow::onBattleRequested(const MapNode& node) {
+void GameWindow::onMapNodeClicked(const MapNode& node) {
     m_lastClickedNode = node;
+    if (node.type == "Monster" || node.type == "Elite" || node.type == "Boss") {
+        m_curtain->raise();
+        m_curtain->show();
+        m_fadeAnimation->stop();
+        m_fadeAnimation->setStartValue(0.0);
+        m_fadeAnimation->setEndValue(1.0);
+        m_fadeAnimation->disconnect();
+
+        connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, node]() {
+            BattleContext context;
+            GlobalSaveData* save = GlobalSaveData::getInstance();
+            context.currentHp = save->currentHp;
+            context.maxHp = save->maxHp;
+            context.gold = save->gold;
+            context.maxEnergy = save->maxEnergy;
+
+            for (const QString& id : save->deckIds) context.currentDeck.append(CardFactory::createCard(id, nullptr));
+            for (const QString& id : save->relicIds) context.relics.append(RelicFactory::createRelic(id, nullptr));
+
+            context.nodeType = node.type;
+            context.currentLayer = node.layer;
+
+            m_launcher = new BattleLauncher(this);
+            connect(m_launcher, &BattleLauncher::battleConcluded, this, &GameWindow::onBattleConcluded);
+
+            m_currentBattleView = m_launcher->launch(context);
+            m_stack->addWidget(m_currentBattleView);
+            m_stack->setCurrentWidget(m_currentBattleView);
+
+            if (m_currentBattleView && m_currentBattleView->getEngine()) {
+                Player* player = m_currentBattleView->getEngine()->getPlayer();
+                if (player) {
+                    m_topBar->bindPlayer(player);
+                }
+            }
+
+            m_fadeAnimation->disconnect();
+            m_fadeAnimation->setStartValue(1.0);
+            m_fadeAnimation->setEndValue(0.0);
+            connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+                m_curtain->hide();
+            });
+            m_fadeAnimation->start();
+        });
+
+        m_fadeAnimation->start();
+    } else if (node.type == "Campfire") {
+        enterCampfireEvent();
+    }
+}
+
+void GameWindow::onBattleConcluded(BattleResult result) {
+    if (!result.isVictory) return;
+
+    GlobalSaveData* save = GlobalSaveData::getInstance();
+    save->currentHp = result.currentHp;
+    save->maxHp = result.maxHp;
+    save->maxEnergy = result.maxEnergy;
+
+    m_rewardScreen->loadRewards(result);
+    m_rewardScreen->dropDown();
+}
+
+void GameWindow::onRewardProceedRequested() {
+    m_rewardScreen->hide();
 
     m_curtain->raise();
     m_curtain->show();
@@ -162,28 +297,18 @@ void GameWindow::onBattleRequested(const MapNode& node) {
     m_fadeAnimation->setEndValue(1.0);
     m_fadeAnimation->disconnect();
 
-    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, node]() {
-        BattleContext context;
-        GlobalSaveData* save = GlobalSaveData::getInstance();
-        context.currentHp = save->currentHp;
-        context.maxHp = save->maxHp;
-        context.gold = save->gold;
-        context.maxEnergy = save->maxEnergy;
+    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+        m_mapManager->m_currentLayer = m_lastClickedNode.layer;
+        m_mapManager->m_currentNodeId = m_lastClickedNode.id;
+        m_mapManager->m_visitedNodes.append(m_lastClickedNode.id);
+        m_mapManager->refreshNodeStates();
 
-        // 疯狂印卡、造遗物...
-        for (const QString& id : save->deckIds) context.currentDeck.append(CardFactory::createCard(id, nullptr));
-        for (const QString& id : save->relicIds) context.relics.append(RelicFactory::createRelic(id, nullptr));
+        m_stack->setCurrentIndex(1); // 🔴 切回大地图 (频道1)
 
-        // 🔴 核心解耦：抹除硬编码！我们只把“标签”塞进密令里发往战斗引擎！
-        context.nodeType = node.type;       // "Monster", "Elite", "Boss" 等
-        context.currentLayer = node.layer;  // 0 ~ 14 层
-
-        m_launcher = new BattleLauncher(this);
-        connect(m_launcher, &BattleLauncher::battleConcluded, this, &GameWindow::onBattleConcluded);
-
-        m_currentBattleView = m_launcher->launch(context);
-        m_stack->addWidget(m_currentBattleView);
-        m_stack->setCurrentWidget(m_currentBattleView);
+        m_stack->removeWidget(m_currentBattleView);
+        m_currentBattleView->deleteLater();
+        m_currentBattleView = nullptr;
+        m_launcher = nullptr;
 
         m_fadeAnimation->disconnect();
         m_fadeAnimation->setStartValue(1.0);
@@ -197,23 +322,8 @@ void GameWindow::onBattleRequested(const MapNode& node) {
     m_fadeAnimation->start();
 }
 
-void GameWindow::onBattleConcluded(BattleResult result) {
-    if (!result.isVictory) return;
-
-    // 🔴 极其丝滑：不要降下全屏黑幕，直接召唤战利品悬浮层！
-    GlobalSaveData* save = GlobalSaveData::getInstance();
-    save->currentHp = result.currentHp;
-    save->maxHp = result.maxHp;
-    save->maxEnergy = result.maxEnergy;
-
-    m_rewardScreen->loadRewards(result);
-    m_rewardScreen->dropDown(); // 💥 砰！伴随着抖动砸下！
-}
-
-// 3. 玩家点完继续，打扫战场并回大地图！
-void GameWindow::onRewardProceedRequested() {
-    // 玩家拿完东西了，现在才需要降下全屏黑幕进行“场景切换”！
-    m_rewardScreen->hide(); // 隐藏悬浮层
+void GameWindow::enterCampfireEvent() {
+    qDebug() << "[GameWindow] 拦截成功！开始安营扎寨！准备降下黑幕...";
 
     m_curtain->raise();
     m_curtain->show();
@@ -223,24 +333,56 @@ void GameWindow::onRewardProceedRequested() {
     m_fadeAnimation->disconnect();
 
     connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
-        // 更新大地图标记
-        m_mapManager->m_currentLayer = m_lastClickedNode.layer;
-        m_mapManager->m_currentNodeId = m_lastClickedNode.id;
-        m_mapManager->m_visitedNodes.append(m_lastClickedNode.id);
-        m_mapManager->refreshNodeStates();
 
-        // ==========================================
-        // 🔴 极其重要的修复：切回大地图，地图现在在频道 1！
-        // ==========================================
-        m_stack->setCurrentIndex(1);
+        CampfireView* campfireView = new CampfireView(nullptr, nullptr, nullptr, this);
+        campfireView->setGeometry(-5, -5, 1610, 910);
 
-        // 🗑️ 此时才真正销毁战斗场景（尸体清理完毕）！
-        m_stack->removeWidget(m_currentBattleView);
-        m_currentBattleView->deleteLater();
-        m_currentBattleView = nullptr;
-        m_launcher = nullptr;
+        campfireView->raise();
+        m_topBarView->raise();
+        m_curtain->raise();
 
-        // 拉起黑幕，回到大地图
+        campfireView->show();
+
+        connect(campfireView, &CampfireView::playerStatusChanged, this, [this]() {
+            GlobalSaveData* save = GlobalSaveData::getInstance();
+            m_topBar->updateHp(save->currentHp, save->maxHp);
+        });
+
+        connect(campfireView, &CampfireView::deckUpdated, this, [this]() {
+            m_topBar->refreshDeckCount();
+        });
+
+        connect(campfireView, &EventBaseView::eventFinished, this, [this, campfireView]() {
+            qDebug() << "[GameWindow] 🔥 玩家休息完毕，准备降下黑幕返回地图！";
+
+            m_curtain->raise();
+            m_curtain->show();
+            m_fadeAnimation->stop();
+            m_fadeAnimation->setStartValue(0.0);
+            m_fadeAnimation->setEndValue(1.0);
+            m_fadeAnimation->disconnect();
+
+            connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, campfireView]() {
+                campfireView->hide();
+                campfireView->deleteLater();
+
+                m_mapManager->m_currentLayer = m_lastClickedNode.layer;
+                m_mapManager->m_currentNodeId = m_lastClickedNode.id;
+                m_mapManager->m_visitedNodes.append(m_lastClickedNode.id);
+                m_mapManager->refreshNodeStates();
+
+                m_fadeAnimation->disconnect();
+                m_fadeAnimation->setStartValue(1.0);
+                m_fadeAnimation->setEndValue(0.0);
+                connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+                    m_curtain->hide();
+                });
+                m_fadeAnimation->start();
+            });
+
+            m_fadeAnimation->start();
+        });
+
         m_fadeAnimation->disconnect();
         m_fadeAnimation->setStartValue(1.0);
         m_fadeAnimation->setEndValue(0.0);

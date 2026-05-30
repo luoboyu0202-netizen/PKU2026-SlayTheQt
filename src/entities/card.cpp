@@ -10,16 +10,25 @@ void Card::upgrade() {
     if (!m_isUpgraded) {
         m_isUpgraded = true;
         m_name += "+";
+        m_id += "+";   // 🔴 极其关键：身份证号加 +，给存档和工厂看的！
     }
 }
 
 QString Card::getDynamicDescription(Player* source, Fighter* target) {
     QString finalDesc = m_rawDescription;
 
+    // ========================================================
+    // 🛡️【核心断网判定】：只有传入了活生生的 source（玩家），才算处于真实战斗！
+    // 火堆里 source 为 nullptr，直接无痛进入安全模式！
+    // ========================================================
+    bool isInCombat = (source != nullptr);
+
     // ⚔️ 1. 解析伤害标签 !D!
     if (finalDesc.contains("!D!")) {
-        int currentDmg = m_baseValue;
-        if (source) {
+        int currentDmg = m_baseValue; // 默认基础伤害
+
+        // 🔴 只有战斗中才去查引擎，绝不跨界！
+        if (isInCombat) {
             BattleEngine* engine = BattleEngine::getInstance();
             if (engine) {
                 currentDmg = engine->calculateSnapshotDamage(source, target, m_baseValue);
@@ -39,10 +48,13 @@ QString Card::getDynamicDescription(Player* source, Fighter* target) {
 
     // 🛡️ 2. 解析格挡标签 !B!
     if (finalDesc.contains("!B!")) {
-        int currentBlock = m_baseValue;
-        if (source) {
+        int currentBlock = m_baseValue; // 默认基础格挡
+
+        // 🔴 同理，战斗中才算 Buff
+        if (isInCombat) {
             currentBlock = StatusManager::calculateBlock(source, m_baseValue);
         }
+
         QString blockStr = QString::number(currentBlock);
         if (currentBlock > m_baseValue) {
             blockStr = QString("<font color='#7fff00'>%1</font>").arg(currentBlock);
@@ -57,5 +69,6 @@ QString Card::getDynamicDescription(Player* source, Fighter* target) {
         finalDesc.replace("!M!", QString::number(m_secondaryValue));
     }
 
+    // 🟢 极其老实地直接 return，绝不动你的 \n 和原本的架构！
     return finalDesc;
 }

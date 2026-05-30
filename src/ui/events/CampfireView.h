@@ -2,11 +2,11 @@
 #include "EventBaseView.h"
 #include "IconButton.h"
 #include "TextButton.h"
-#include "SelectableCardItem.h"
 #include <QGraphicsEllipseItem>
 #include <QGraphicsPathItem>
 #include <QGraphicsTextItem>
 #include <QPropertyAnimation>
+#include "../carditem.h" // (注意路径可能需要根据你的实际目录调整)
 
 class CampfireView : public EventBaseView {
     Q_OBJECT
@@ -16,12 +16,22 @@ public:
                           RelicManager* relicManager, QWidget* parent = nullptr);
 
 protected:
-    void setupContent() override;
+    void setupContent();
+    // 拦截卡牌点击事件的过滤器
+    bool eventFilter(QObject* obj, QEvent* event) override;
+    // ========================================================
+    // 🌟 新增：拦截鼠标滚轮事件，实现只滚卡牌不滚背景的 3A 级交互！
+    // ========================================================
+    void wheelEvent(QWheelEvent *event) override;
+
+signals:
+    void playerStatusChanged(); // 睡觉回血后通知顶栏刷新！
+    void deckUpdated();         // 锻造卡牌后通知顶栏刷新总牌库！
 
 private:
     void onRest();
     void onUpgrade();
-    void showCardSelector();
+    void showCardSelector(const QList<Card*>& candidates);
     void confirmUpgrade();
     void cancelUpgrade();
     void runUpgradeAnimation(Card* card);

@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QFile>
 #include <QDebug>
+#include <QPropertyAnimation>
 
 IconButton::IconButton(const QString& imagePath, QGraphicsItem* parent)
     : QGraphicsObject(parent) {
@@ -27,9 +28,17 @@ IconButton::IconButton(const QString& imagePath, QGraphicsItem* parent)
         if (m_pixmap.isNull())
             qDebug() << "[IconButton] NOT FOUND:" << fileName << "from" << QCoreApplication::applicationDirPath();
     }
-    if (!m_pixmap.isNull())
-        m_pixmap = m_pixmap.scaled(280, 180, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    if (!m_pixmap.isNull()) {
+        // 🔴 极其关键：改成 Qt::KeepAspectRatio！
+        // 这样图片会等比例缩小/放大，直到刚好塞进 280x180 的盒子里，绝不变形！
+        m_pixmap = m_pixmap.scaledToHeight(140, Qt::SmoothTransformation);
+    }
     setAcceptHoverEvents(true);
+
+    // ========================================================
+    // 🔴 设定物理锚点：280x180 的中心点就是 (140, 90)
+    // ========================================================
+    setTransformOriginPoint(140, 90);
 }
 
 QRectF IconButton::boundingRect() const {
@@ -43,7 +52,15 @@ void IconButton::paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidg
     if (m_pressed) painter->translate(0, 3);
 
     if (!m_pixmap.isNull()) {
-        painter->drawPixmap(boundingRect().toRect(), m_pixmap);
+        // ========================================================
+        // 🔴 极其优雅的“画框居中算法”！
+        // ========================================================
+        // 计算图片真实尺寸与 280x180 碰撞箱的差值，除以 2 得到完美的居中偏移量！
+        qreal xOffset = (280.0 - m_pixmap.width()) / 2.0;
+        qreal yOffset = (180.0 - m_pixmap.height()) / 2.0;
+
+        // 用精确的浮点数坐标画出高清原图！
+        painter->drawPixmap(QPointF(xOffset, yOffset), m_pixmap);
     } else {
         // 加载失败时渲染可见的占位按钮
         QRectF r = boundingRect();
@@ -57,8 +74,29 @@ void IconButton::paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidg
     }
 }
 
-void IconButton::hoverEnterEvent(QGraphicsSceneHoverEvent*) { m_hovered = true; update(); }
-void IconButton::hoverLeaveEvent(QGraphicsSceneHoverEvent*) { m_hovered = false; update(); }
+void IconButton::hoverEnterEvent(QGraphicsSceneHoverEvent*) {
+    m_hovered = true;
+    update();
+
+    // 🌟 鼠标进入：极其丝滑地放大到 1.15 倍！
+    QPropertyAnimation* anim = new QPropertyAnimation(this, "scale");
+    anim->setDuration(150); // 150 毫秒的极速弹起
+    anim->setEndValue(1.15);
+    anim->setEasingCurve(QEasingCurve::OutQuad);
+    anim->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void IconButton::hoverLeaveEvent(QGraphicsSceneHoverEvent*) {
+    m_hovered = false;
+    update();
+
+    // 🌟 鼠标离开：极其丝滑地回弹到 1.0 倍！
+    QPropertyAnimation* anim = new QPropertyAnimation(this, "scale");
+    anim->setDuration(150);
+    anim->setEndValue(1.0);
+    anim->setEasingCurve(QEasingCurve::OutQuad);
+    anim->start(QAbstractAnimation::DeleteWhenStopped);
+}
 void IconButton::mousePressEvent(QGraphicsSceneMouseEvent* e) {
     if (e->button() == Qt::LeftButton) { m_pressed = true; update(); e->accept(); }
 }

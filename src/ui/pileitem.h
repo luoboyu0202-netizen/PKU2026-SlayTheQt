@@ -28,4 +28,5 @@ protected:
 private:
     QString m_name;
     int m_count;
+    QPixmap m_iconPixmap; // 🔴【新增】：存放读取到的高清贴图
 };

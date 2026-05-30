@@ -160,7 +160,7 @@ void MapManager::generateMapNodes() {
             btn->installEventFilter(this);
 
             connect(btn, &QPushButton::clicked, this, [this, node]() {
-                this->triggerBattle(node);
+                this->triggerNode(node);
             });
 
             btn->show();
@@ -169,15 +169,11 @@ void MapManager::generateMapNodes() {
     refreshNodeStates();
 }
 
-void MapManager::triggerBattle(const MapNode& clickedNode) {
-    emit battleRequested(clickedNode);
+void MapManager::triggerNode(const MapNode& clickedNode) {
+    // 以前是 emit battleRequested(clickedNode);
+    // 🔴 现在变成无情的中转站，不管是什么节点，直接发射给 GameWindow 裁决！
+    emit nodeClicked(clickedNode);
 }
-// ==========================================
-// 绘制大地图底层的交叉连线
-// ==========================================
-// ==========================================
-// 绘制大地图底层的交叉连线 (纯净版)
-// ==========================================
 // ==========================================
 // 绘制大地图底层的交叉连线 (发散触点纯净版)
 // ==========================================

@@ -26,11 +26,17 @@ signals:
     void requestBattle(BattleContext context);
 
 protected:
-    virtual void setupContent() = 0; // 子类在此填充中央内容
+    void setupContent(); // 子类在此填充中央内容
 
     void showDarkOverlay(const QString& text = "");
     void hideDarkOverlay();
     void setLeaveButtonVisible(bool visible);
+
+    // ========================================================
+    // 🎬 终极黑屏幕布引擎！
+    // ========================================================
+    void playEnterTransition(); // 揭开幕布（入场）
+    void playLeaveTransition(); // 拉下幕布（退场）
 
     QGraphicsScene* m_scene;
     Player* m_player;
@@ -49,7 +55,4 @@ private:
     void setupCommonUI();
     QPointF playerImagePos() const;
     QPointF leaveButtonPos() const;
-
-    TopBar* m_topBar;
-    RelicTray* m_relicTray = nullptr;
 };

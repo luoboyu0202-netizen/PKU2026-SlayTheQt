@@ -75,12 +75,17 @@ void CardItem::animateToHome() {
 }
 
 QRectF CardItem::boundingRect() const {
-    return QRectF(-90, -120, 170, 230);
+    return QRectF(-120, -150, 240, 300);
 }
 
 void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
     Q_UNUSED(option); Q_UNUSED(widget);
     painter->setRenderHint(QPainter::Antialiasing);
+
+    if (m_logicCard == nullptr) {
+        qDebug() << "[CRASH-TEST] 🚨 致命错误：CardItem 在尝试 Paint 时，m_logicCard 丢失了！";
+        return;
+    }
 
     if (!m_logicCard) return;
 
@@ -106,6 +111,15 @@ void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
     painter->setBrush(bgColor);
     painter->setPen(QPen(borderColor, 3)); // 3 像素粗的类型边框
     painter->drawRoundedRect(cardRect, 8, 8); // 8 像素圆角
+
+    // ========================================================
+    // 👑 极品视觉：展示模式下的“黄金选中框”！
+    // ========================================================
+    if (property("ui_selected").toBool()) {
+        painter->setBrush(Qt::NoBrush);
+        painter->setPen(QPen(QColor(255, 215, 0), 6, Qt::SolidLine)); // 6像素粗的纯正金边
+        painter->drawRoundedRect(cardRect, 8, 8);
+    }
 
     // ========================================================
     // 🎨 2. 画卡牌上半部分的立绘！
@@ -156,8 +170,13 @@ void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
 
     // 🔮 1. 从大脑单例中拿到主角指针（因为计算伤害需要主角的力量）
     Player* player = nullptr;
-    if (BattleEngine::getInstance()) {
-        player = BattleEngine::getInstance()->getPlayer();
+    // ========================================================
+    // 🔴 绝对物理隔离：如果是纯展示模式，禁止访问任何战斗单例！
+    // ========================================================
+    if (!m_isDisplayOnly) {
+        if (BattleEngine::getInstance()) {
+            player = BattleEngine::getInstance()->getPlayer();
+        }
     }
 
     // 🔮 2. 呼叫动态文案生成器！
@@ -176,9 +195,12 @@ void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
     // 🔴【核心修复 1】：使用 QTextDocument 渲染 HTML 富文本！
     // ========================================================
     QTextDocument doc;
-    doc.setDefaultFont(QFont("Microsoft YaHei", 9)); // 继承你原本设置好的描述字体
 
-    // 给文本包上一层 div，强制居中并设置默认白色，这样没被变色的字依然是白的
+    // 🔴【新增视效优化】：把默认的页面边距砍到 0！文字瞬间完美填满你的 descRect！
+    doc.setDocumentMargin(0);
+
+    doc.setDefaultFont(QFont("Microsoft YaHei", 9));
+
     QString htmlStr = QString("<div align='center' style='color: white;'>%1</div>").arg(dynamicDesc);
     doc.setHtml(htmlStr);
     doc.setTextWidth(descRect.width()); // 限制宽度，自动换行
@@ -197,12 +219,17 @@ void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
         painter->drawRoundedRect(cardRect, 12, 12);
     }
 
-    if (BattleEngine::getInstance()->isSelectingHandCard()) {
-        // 如果这张牌在大脑的勾选列表里，狠狠地给它拉一层金色传说的大外边框！
-        if (BattleEngine::getInstance()->getSelectedCards().contains(m_logicCard)) {
-            painter->setBrush(Qt::NoBrush);
-            painter->setPen(QPen(QColor(241, 196, 15), 4, Qt::SolidLine)); // 4像素粗的纯正金边
-            painter->drawRoundedRect(cardRect, 8, 8);
+    // ========================================================
+    // ✅ 修复：给时停金边也加上免死金牌，并且加上断网隔离！
+    // ========================================================
+    if (!m_isDisplayOnly) { // 🔴 必须加上这个围墙！
+        BattleEngine* engine = BattleEngine::getInstance();
+        if (engine && engine->isSelectingHandCard()) {
+            if (engine->getSelectedCards().contains(m_logicCard)) {
+                painter->setBrush(Qt::NoBrush);
+                painter->setPen(QPen(QColor(241, 196, 15), 4, Qt::SolidLine));
+                painter->drawRoundedRect(cardRect, 8, 8);
+            }
         }
     }
     // ========================================================
@@ -269,7 +296,8 @@ void CardItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
     Q_UNUSED(event);
 
     if (m_isDisplayOnly) {
-        setZValue(100); // 浮到最上层
+
+        setZValue(200); // 浮到最上层
         // 只需要极其简单粗暴的原地放大！
         QPropertyAnimation* scaleAnim = new QPropertyAnimation(this, "scale");
         scaleAnim->setEndValue(1.5); // 原地放大 1.5 倍
@@ -309,13 +337,17 @@ void CardItem::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
     Q_UNUSED(event);
 
     if (m_isDisplayOnly) {
-        setZValue(0); // 恢复层级
-        // 恢复原始大小
+        // ========================================================
+        // 🌟 核心魔法：如果我被选中了，我就拒绝缩小！保持高傲的放大姿态！
+        // ========================================================
+        if (property("ui_selected").toBool()) return;
+
+        setZValue(160);
         QPropertyAnimation* scaleAnim = new QPropertyAnimation(this, "scale");
         scaleAnim->setEndValue(1.0);
         scaleAnim->setDuration(150);
         scaleAnim->start(QAbstractAnimation::DeleteWhenStopped);
-        return; // 🟢 极其关键：直接 return！
+        return;
     }
 
     if (m_isGhost) {
@@ -360,6 +392,11 @@ void CardItem::mousePressEvent(QGraphicsSceneMouseEvent* event) {
 
     if (m_isGhost) {
         event->ignore(); // 把事件抛出去，不处理！
+        return;
+    }
+
+    if (m_isDisplayOnly) {
+        event->accept(); // 吞掉点击事件，当无事发生！
         return;
     }
 
@@ -435,6 +472,11 @@ void CardItem::mouseMoveEvent(QGraphicsSceneMouseEvent* event) {
     // 🔴【无敌金身】：悬浮期间禁止拖拽！
     if (m_isSuspended) {
         event->accept(); // 吞掉点击
+        return;
+    }
+
+    if (m_isDisplayOnly) {
+        event->accept(); // 吞掉点击事件，当无事发生！
         return;
     }
 
@@ -516,6 +558,11 @@ void CardItem::mouseMoveEvent(QGraphicsSceneMouseEvent* event) {
 }
 
 void CardItem::mouseReleaseEvent(QGraphicsSceneMouseEvent* event) {
+
+    if (m_isDisplayOnly) {
+        event->accept(); // 吞掉点击事件，当无事发生！
+        return;
+    }
 
     if (m_isGhost) {
         event->ignore(); // 把事件抛出去，不处理！
