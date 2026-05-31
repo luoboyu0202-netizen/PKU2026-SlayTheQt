@@ -424,13 +424,6 @@ void CampfireView::showCardSelector() {
         m_darkOverlay->setZValue(150); 
     }
 
-    m_cardSelectPrompt = new QGraphicsTextItem("选择一张卡牌升级");
-    m_cardSelectPrompt->setDefaultTextColor(QColor(255, 230, 150)); // 柔和的金黄色
-    m_cardSelectPrompt->setFont(QFont("Microsoft YaHei", 28, QFont::Bold));
-    m_cardSelectPrompt->setZValue(160);
-    m_scene->addItem(m_cardSelectPrompt);
-    m_cardSelectPrompt->setPos(960 - m_cardSelectPrompt->boundingRect().width() / 2, 140);
-
     QList<Card*> candidates = allUpgradableCards();
 
     const int cols = qMin(candidates.size(), 5);
