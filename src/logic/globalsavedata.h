@@ -19,6 +19,10 @@ public:
     int maxEnergy = 3;
     int cardRemovalCost = 75;
 
+    // --- 问号事件：留给自己的讯息 (Note For Yourself) ---
+    QString storedCardId = "card_strike"; // 首次默认为打击 (原作为铁斩波，此处用已有卡牌)
+    bool isStoredCardUpgraded = false;
+
     // 核心安全设计：只存 ID 列表，绝不存实体指针！
     QList<QString> deckIds;
     QList<QString> relicIds;

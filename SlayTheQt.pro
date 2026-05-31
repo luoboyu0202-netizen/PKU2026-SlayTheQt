@@ -45,6 +45,13 @@ SOURCES += \
     src/ui/events/ChestView.cpp \
     src/ui/events/EventBaseView.cpp \
     src/ui/events/MerchantView.cpp \
+    src/ui/events/BigFishView.cpp \
+    src/ui/events/ClericView.cpp \
+    src/ui/events/DesignerView.cpp \
+    src/ui/events/SelfNoteView.cpp \
+    src/ui/events/GoldenWingView.cpp \
+    src/ui/events/GenericChoiceEventView.cpp \
+    src/ui/events/EventOptionButton.cpp \
 #    src/ui/events/ShopCardItem.cpp \
     src/ui/events/IconButton.cpp \
     src/ui/events/LeaveButton.cpp \
@@ -121,6 +128,13 @@ HEADERS += \
     src/ui/events/ChestView.h \
     src/ui/events/EventBaseView.h \
     src/ui/events/MerchantView.h \
+    src/ui/events/BigFishView.h \
+    src/ui/events/ClericView.h \
+    src/ui/events/DesignerView.h \
+    src/ui/events/SelfNoteView.h \
+    src/ui/events/GoldenWingView.h \
+    src/ui/events/GenericChoiceEventView.h \
+    src/ui/events/EventOptionButton.h \
 #    src/ui/events/ShopCardItem.h \
     src/ui/events/IconButton.h \
     src/ui/events/LeaveButton.h \

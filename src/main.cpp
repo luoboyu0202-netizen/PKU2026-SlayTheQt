@@ -12,33 +12,36 @@
 int main(int argc, char *argv[]) {
     QApplication a(argc, argv);
 
-    GlobalSaveData* save = GlobalSaveData::getInstance();
-    save->initNewGame();
-    save->gold = 200;
+    #if 1  // Test: QuestionMark GoldenWing
+        GlobalSaveData* save = GlobalSaveData::getInstance();
+        save->initNewGame();
+        save->currentHp = 80; 
+        save->maxHp = 80;
+        save->gold = 0; // 初始没钱，测试摧毁获得金币
 
-    EventContext ctx;
-    ctx.eventType = EventType::Merchant;
-    ctx.currentHp = save->currentHp;
-    ctx.maxHp = save->maxHp;
-    ctx.gold = save->gold;
-    ctx.maxEnergy = save->maxEnergy;
+        EventContext ctx;
+        ctx.eventType = EventType::QuestionMark;
+        ctx.eventSubtype = "GoldenWing";
+        ctx.currentHp = save->currentHp;
+        ctx.maxHp = save->maxHp;
+        ctx.gold = save->gold;
+        ctx.maxEnergy = save->maxEnergy;
 
-    for (const QString& id : save->deckIds) {
-        Card* c = CardFactory::createCard(id);
-        if (c) ctx.currentDeck.append(c);
-    }
-    for (const QString& id : save->relicIds) {
-        Relic* r = RelicFactory::createRelic(id);
-        if (r) ctx.relics.append(r);
-    }
+        // 填充初始卡组 (默认已有打击，满足摧毁条件)
+        for (const QString& id : save->deckIds) {
+            Card* c = CardFactory::createCard(id);
+            if (c) ctx.currentDeck.append(c);
+        }
 
-    EventLauncher* launcher = new EventLauncher();
-    QObject::connect(launcher, &EventLauncher::eventConcluded, [&a](EventResult result) {
-        qDebug() << "Merchant event done. Gold:" << result.currentGold
-                 << "HP:" << result.remainingHp << "Cards:" << result.resultDeck.size();
-        a.quit();
-    });
-    launcher->launch(ctx);
+        EventLauncher* launcher = new EventLauncher();
+        QObject::connect(launcher, &EventLauncher::eventConcluded, [&a](EventResult result) {
+            qDebug() << "--- GoldenWing Test End ---";
+            qDebug() << "Final HP:" << result.remainingHp;
+            qDebug() << "Final Gold:" << result.currentGold;
+            a.quit();
+        });
+        launcher->launch(ctx);
+    #endif
 
     return a.exec();
 }
