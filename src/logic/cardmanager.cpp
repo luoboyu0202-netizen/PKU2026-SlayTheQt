@@ -3,6 +3,7 @@
 #include <algorithm> // 引入洗牌算法 std::shuffle
 #include <chrono>    // 引入时间库作为随机种子
 #include <QDebug>
+#include <QRandomGenerator>
 #include <BattleEngine.h>
 
 CardManager::CardManager(QObject* parent) : QObject(parent) {}
@@ -194,6 +195,35 @@ void CardManager::removeCardPermanently(Card* card) {
     m_hand.removeOne(card);
     m_discardPile.removeOne(card);
     m_exhaustPile.removeOne(card);
+    m_masterDeck.removeOne(card);
+    emit pileCountsChanged(m_drawPile.size(), m_discardPile.size(), m_exhaustPile.size());
+}
+
+void CardManager::upgradeRandomCards(int count) {
+    QList<Card*> pool = getUpgradableCards();
+    if (pool.isEmpty()) return;
+
+    int actualCount = std::min(count, (int)pool.size());
+    for (int i = 0; i < actualCount; ++i) {
+        int idx = QRandomGenerator::global()->bounded(pool.size());
+        pool[idx]->upgrade();
+        pool.removeAt(idx);
+    }
+}
+
+QList<Card*> CardManager::getUpgradableCards() const {
+    QList<Card*> pool;
+    // 检查所有可能存放卡牌的容器
+    QList<const QList<Card*>*> piles = { &m_drawPile, &m_hand, &m_discardPile, &m_exhaustPile };
+    for (const auto* pile : piles) {
+        for (Card* c : *pile) {
+            if (c && !c->isUpgraded() && c->getType() != CardType::Status && c->getType() != CardType::Curse) {
+                // 防止重复添加（虽然逻辑上不应该在多个堆里）
+                if (!pool.contains(c)) pool.append(c);
+            }
+        }
+    }
+    return pool;
 }
 
 void CardManager::addCardToDiscardPile(Card* newCard) {

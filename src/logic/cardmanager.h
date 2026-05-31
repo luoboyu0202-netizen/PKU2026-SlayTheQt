@@ -78,6 +78,10 @@ public:
     void removeCardPermanently(Card* card);
 
 
+    // 🔴【设计师事件用】：随机升级 N 张卡牌
+    void upgradeRandomCards(int count);
+    QList<Card*> getUpgradableCards() const;
+
 signals:
     // UI 监听这些信号来播放飞行动画和更新数字贴图
     void cardDrawn(Card* card);

@@ -879,8 +879,8 @@ void MerchantView::confirmRemoval(Card* card) {
 
     if (m_removeButton) {
         m_removeButton->hide();
-        QPixmap soldoutPix = loadPixmap(":/resources/images/events/Merchant/soldout.jpeg",
-                                           "resources/images/events/Merchant/soldout.jpeg");
+        QPixmap soldoutPix = loadPixmap(":/resources/images/events/Merchant/soldout-removebg-preview.png",
+                                           "resources/images/events/Merchant/soldout-removebg-preview.png");
         if (!soldoutPix.isNull()) {
             soldoutPix = trimTransparentPadding(soldoutPix);
             m_soldoutItem = new QGraphicsPixmapItem();
