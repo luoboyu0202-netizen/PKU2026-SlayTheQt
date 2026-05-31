@@ -6,16 +6,16 @@
 #include <QString>
 #include <QMap>
 #include <QPushButton> // 👈 引入按钮头文件，因为我们要保存按钮指针
-#include "../api/BattleLauncher.h"
 #include <QPropertyAnimation> // 👈 引入属性动画头文件
 #include <QEvent>             // 👈 引入事件处理头文件
+#include "api/GameEnums.h"
 
-// 📍 地图节点数据结构 (保持不变)
+// 📍 地圖節點數據結構
 struct MapNode {
     int id;
     int layer;
     int position;
-    QString type;
+    NodeType type; // 🔴 升級為枚舉類型！不再使用 QString
     QList<int> nextNodes;
     int uiX;
     int uiY;

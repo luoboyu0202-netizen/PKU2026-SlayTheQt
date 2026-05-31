@@ -11,7 +11,6 @@ public:
     explicit RelicManager(QObject* parent = nullptr) : QObject(parent) {}
 
     void addRelic(Relic* relic) {
-        relic->setParent(this);
         m_relics.append(relic);
         emit relicAdded(relic); // 通知 UI 新增遗物
     }

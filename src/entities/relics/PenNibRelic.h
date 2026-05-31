@@ -48,11 +48,12 @@ public:
                 // 2. 层数归零（内部会 emit counterChanged 自动刷新 UI 数字）
                 setCounter(0);
             } else {
-                qDebug() << "[Relic] 🖋️ 钢笔尖默默记录了一次攻击，当前层数：" << getCounter() + 1;
+                qDebug() << "[RelicPen] 🖋️ 钢笔尖默默记录了一次攻击，当前层数：" << getCounter() + 1;
 
                 // 默默加 1 层，UI 数字会自动随之跳动
                 setCounter(getCounter() + 1);
             }
+            emit counterChanged(m_counter);
         }
     }
 };

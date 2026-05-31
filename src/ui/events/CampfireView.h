@@ -6,7 +6,7 @@
 #include <QGraphicsPathItem>
 #include <QGraphicsTextItem>
 #include <QPropertyAnimation>
-#include "../carditem.h" // (注意路径可能需要根据你的实际目录调整)
+#include "../Carditem.h" // (注意路径可能需要根据你的实际目录调整)
 
 class CampfireView : public EventBaseView {
     Q_OBJECT
@@ -19,6 +19,7 @@ protected:
     void setupContent();
     // 拦截卡牌点击事件的过滤器
     bool eventFilter(QObject* obj, QEvent* event) override;
+
     // ========================================================
     // 🌟 新增：拦截鼠标滚轮事件，实现只滚卡牌不滚背景的 3A 级交互！
     // ========================================================

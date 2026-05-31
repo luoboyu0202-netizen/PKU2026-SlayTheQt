@@ -1,0 +1,53 @@
+void CampfireView::showCardSelector() {
+    // 调暗背景并提升遮罩层
+    showDarkOverlay();
+    if (m_darkOverlay) {
+        m_darkOverlay->setBrush(QColor(0, 0, 0, 200)); // 进一步加深背景
+        m_darkOverlay->setZValue(150); 
+    }
+
+    m_cardSelectPrompt = new QGraphicsTextItem("选择一张卡牌升级");
+    m_cardSelectPrompt->setDefaultTextColor(QColor(255, 230, 150)); // 柔和的金黄色
+    m_cardSelectPrompt->setFont(QFont("Microsoft YaHei", 28, QFont::Bold));
+    m_cardSelectPrompt->setZValue(160);
+    m_scene->addItem(m_cardSelectPrompt);
+    m_cardSelectPrompt->setPos(960 - m_cardSelectPrompt->boundingRect().width() / 2, 140);
+
+    QList<Card*> candidates = allUpgradableCards();
+
+    const int cols = qMin(candidates.size(), 5);
+    const int cardW = 170;
+    const int cardH = 240;
+    const int startX = 960 - (cols * cardW) / 2;
+
+    for (int i = 0; i < candidates.size(); ++i) {
+        auto* item = new SelectableCardItem(candidates[i], nullptr);
+        int col = i % cols;
+        int row = i / cols;
+        item->setPos(startX + col * cardW + cardW / 2, 320 + row * (cardH + 20));
+        item->setZValue(160); // 确保卡牌在遮罩之上
+        m_scene->addItem(item);
+        m_cardDisplayItems.append(item);
+
+        connect(item, &SelectableCardItem::clicked, this, [this, item](Card*) {
+            for (auto* other : m_cardDisplayItems)
+                static_cast<SelectableCardItem*>(other)->setHighlighted(false);
+            item->setHighlighted(true);
+            m_selectedCard = item->card();
+            if (m_confirmBtn) m_confirmBtn->show();
+        });
+    }
+
+    m_confirmBtn = new TextButton("确认升级", 200, 55);
+    m_confirmBtn->setPos(960 - 120, 900);
+    m_confirmBtn->setZValue(160);
+    m_confirmBtn->hide();
+    m_scene->addItem(m_confirmBtn);
+    connect(m_confirmBtn, &TextButton::clicked, this, &CampfireView::confirmUpgrade);
+
+    m_cancelBtn = new TextButton("取消", 200, 55);
+    m_cancelBtn->setPos(960 + 120, 900);
+    m_cancelBtn->setZValue(160);
+    m_scene->addItem(m_cancelBtn);
+    connect(m_cancelBtn, &TextButton::clicked, this, &CampfireView::cancelUpgrade);
+}

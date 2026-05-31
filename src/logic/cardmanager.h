@@ -76,6 +76,9 @@ public:
     // 🔴【新增】：通知所有手牌重新计算伤害并刷新 UI！
     void refreshHandDynamicText();
 
+    // 🔴【商店用】：永久删除一张卡牌（从所有堆中移除）
+    void removeCardPermanently(Card* card);
+
 
 signals:
     // UI 监听这些信号来播放飞行动画和更新数字贴图
