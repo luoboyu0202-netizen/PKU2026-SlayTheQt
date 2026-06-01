@@ -19,6 +19,7 @@ public:
 
         m_type = CardType::Attack;
         m_target = CardTarget::Enemy;
+        m_rarity = CardRarity::Starter;
         m_imagePath = ":/resources/images/cards/strike.png";
     }
 

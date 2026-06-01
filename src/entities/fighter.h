@@ -19,7 +19,6 @@ public:
     int getMaxHp() const { return m_maxHp; }
     int getBlock() const { return m_block; }
     bool isDead() const { return m_isDead; }
-    void setMaxHp(int hp){ m_maxHp=hp; }
 
     // 核心战斗数据操作接口
     virtual void takeDamage(int amount);
@@ -29,6 +28,7 @@ public:
     virtual void die();
 
     virtual void setHp(int hp);
+    virtual void setMaxHp(int maxHp); // 新增：设置最大生命值接口
 
 signals:
     // 数据驱动 UI：任何数值变化都必须通过这些信号通知表现层

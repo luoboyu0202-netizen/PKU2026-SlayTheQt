@@ -8,10 +8,35 @@
 | 阶段2：事件基类 + 公共 UI | 完成 | EventBaseView.h/.cpp, TopBar.h/.cpp, RelicTray.h/.cpp, LeaveButton.h/.cpp |
 | 阶段 3.1：火堆 Campfire | 完成 | CampfireView.h/.cpp, IconButton.h/.cpp |
 | 阶段 3.2：宝箱 Chest | 完成 | ChestView.h/.cpp, RelicPopupWidget.h/.cpp |
-| **阶段 3.3：商人 Merchant** | **完成** | MerchantView.h/.cpp, 遗物 Tooltip, 购买动画, 删牌服务 |
-| 阶段 3.4：问号 QuestionMark | 未开始 | — |
+| 阶段 3.3：商人 Merchant | 完成 | MerchantView.h/.cpp, 遗物 Tooltip, 购买动画, 删牌服务 |
+| **阶段 3.4：问号 QuestionMark** | **完成** | GenericChoiceEventView, BigFish, Cleric, Designer, SelfNote, GoldenWing |
 | 阶段 4：卡牌组件统一 | 完成 | CardItem 替代 ShopCardItem + SelectableCardItem |
 | 阶段 5：联调与边界处理 | 持续中 | 编译修复、资源格式转换、UI 对齐 |
+
+---
+
+## 问号事件 (Question Mark) 当前状态 (截至 2026-05-31)
+
+### 已完成事件集
+- **遭遇战 (Monster Encounter)**：通过 `BattleLauncher` 桥接，直接进入普通怪物战斗，战后无缝同步血量与金币。
+- **大鱼 (Big Fish)**：
+    - [香蕉] 回血 (MaxHp / 3)；[甜甜圈] 提升 MaxHP 并回血；[盒子] 获得随机遗物并塞入占位诅咒(Strike)。
+- **牧师 (The Cleric)**：
+    - [治疗] 扣35金，回复25%血；[净化] 扣50金，启动卡牌移除（模态复用商店逻辑）。
+- **尖端设计师 (The Designer)**：
+    - 复杂的动态判定：[小修] 扣50金，随机升级2张；[清洁] 扣75金，移除1张；[全套] 扣110金，移除1并随机升级1张；[一拳] 扣3血，动态切换插图为 `Punched.png`。
+- **留给自己的讯息 (Note For Yourself)**：
+    - **跨局联动**：在 `GlobalSaveData` 中持久化记录 `storedCardId` 和 `isStoredCardUpgraded`。
+    - **两阶段交换**：点击后先获得存款卡牌，再强制开启选牌界面存入一张新卡牌。
+- **翅膀雕像 (Golden Wing)**：
+    - [祈祷] 扣7血，移除1张卡牌；[摧毁] 获得 50-80 随机金币。
+
+### 核心技术沉淀
+- **`GenericChoiceEventView` 框架**：
+    - 标准化“左侧 650x650 插图 + 右侧 HTML 滑动文本 + 底部悬停按钮”的选项类事件范式。
+    - **UI 隔离**：使用 `setOptionsEnabled` 实现进入删牌/选牌网格时的模态独占，杜绝套娃点击。
+    - **富文本渲染**：引入 `QGraphicsProxyWidget` + `QTextBrowser` 组合，支持文字滚动和关键字 **加粗**（如 `<b>遗物</b>`）。
+- **流程规范**：所有涉及“服务”（删牌、换牌）的交互已统一采用“选中 -> 确认/返回”二次操作流，避免误触。
 
 ---
 

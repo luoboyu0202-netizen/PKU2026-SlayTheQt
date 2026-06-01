@@ -12,6 +12,11 @@
 #include "ui/events/ChestView.h"
 #include <QScrollArea> // 队友提供：滚动视口
 #include <QScroller>   // 队友提供：触摸拖拽与物理惯性
+#include "api/EventLauncher.h"
+#include <QGraphicsBlurEffect>
+#include <QRandomGenerator>
+#include <cmath>
+
 
 GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), m_currentBattleView(nullptr) {
     // 1. 设置游戏主窗口大小
@@ -288,6 +293,8 @@ void GameWindow::onMapNodeClicked(const MapNode& node) {
         enterMerchantEvent();
     }else if (node.type == NodeType::Chest) {
         enterChestEvent();
+    }else if (node.type == NodeType::Event) { // 請根據你的枚舉名稱調整
+        enterQuestionMarkEvent(node);
     }
 }
 
@@ -581,4 +588,474 @@ void GameWindow::enterChestEvent() {
     });
 
     m_fadeAnimation->start();
+}
+
+void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
+
+    // ========================================================
+    // 🎲 1. 頂層截胡：商店與寶箱的絕對機率 (保持不變)
+    // ========================================================
+    int roll = QRandomGenerator::global()->bounded(100);
+    if (roll < 3) {
+        qDebug() << "🎲 驚喜！問號節點偽裝成了【商店】！";
+        enterMerchantEvent();
+        return;
+    }
+    else if (roll < 5) {
+        qDebug() << "🎲 驚喜！問號節點偽裝成了【寶箱】！";
+        enterChestEvent();
+        return;
+    }
+
+    qDebug() << "[GameWindow] 踏入未知！准备降下黑幕...";
+    GlobalSaveData* save = GlobalSaveData::getInstance();
+    EventContext ctx;
+    ctx.eventType = EventType::QuestionMark;
+    ctx.currentLayer = node.layer;
+
+    // ========================================================
+    // ⚔️ 2. 動態怪物機率 (殺戮尖塔正宗 PRD)
+    // 初始 10%，每次沒遇到就 +10%，遇到就重置回 10%
+    // ========================================================
+    int monsterRoll = QRandomGenerator::global()->bounded(100);
+    if (monsterRoll < save->questionMarkMonsterChance) {
+        ctx.eventSubtype = "MonsterEncounter";
+        save->questionMarkMonsterChance = 10; // 🔴 遇到怪物了，機率重置！
+        qDebug() << "🎲 運氣不好！觸發遭遇戰。下次怪物機率重置為 10%";
+    }
+    else {
+        // 🔴 沒遇到怪物，下次遇到怪物的機率增加 10%！
+        save->questionMarkMonsterChance += 10;
+
+        // ========================================================
+        // 📜 3. 故事事件的「抽獎袋 (Grab Bag)」機制
+        // 抽過就不會再出現，直到袋子空了才重新洗牌！
+        // ========================================================
+        if (save->availableEvents.isEmpty()) {
+            qDebug() << "🎲 事件袋已空，重新進貨洗牌！";
+            save->availableEvents = {
+                "BigFish", "Cleric", "Designer", "SelfNote", "GoldenWing"
+            };
+        }
+
+        // 從袋子裡隨機盲抽一個
+        int eventIndex = QRandomGenerator::global()->bounded(save->availableEvents.size());
+        ctx.eventSubtype = save->availableEvents[eventIndex];
+
+        // 🔴 抽走之後立刻從袋子裡剔除，保證短期內絕對不重複！
+        save->availableEvents.removeAt(eventIndex);
+
+        qDebug() << "🎲 盲盒開啟！本次搖中：" << ctx.eventSubtype
+                 << " | 剩餘未觸發事件數：" << save->availableEvents.size()
+                 << " | 下次怪物機率升至：" << save->questionMarkMonsterChance << "%";
+    }
+
+    qDebug() << "[GameWindow] 踏入未知！准备降下黑幕...";
+
+    m_curtain->raise();
+    m_curtain->show();
+    m_fadeAnimation->stop();
+    m_fadeAnimation->setStartValue(0.0);
+    m_fadeAnimation->setEndValue(1.0);
+    m_fadeAnimation->disconnect();
+
+    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, node]() {
+        // 1. 构建输入合同 (Context)
+        GlobalSaveData* save = GlobalSaveData::getInstance();
+        EventContext ctx;
+        ctx.currentHp = save->currentHp;
+        ctx.maxHp = save->maxHp;
+        ctx.gold = save->gold;
+        ctx.maxEnergy = save->maxEnergy;
+        ctx.eventType = EventType::QuestionMark;
+        ctx.currentLayer = node.layer; // 确保战斗层数正确
+        // ========================================================
+        // 替換後：🔴 啟動真正的問號隨機搖獎！
+        // ========================================================
+        // 如果你的地圖節點已經自帶了事件 ID (且不為空)，就優先用地圖的：
+        // if (!node.eventId.isEmpty()) {
+        //     ctx.eventSubtype = node.eventId;
+        // } else {
+
+        // 🎲 否則，我們自己來搖骰子！
+        QStringList possibleEvents = {
+            "BigFish",           // 大魚 (我們剛才完美重構的那個！)
+            "Cleric",            // 牧師
+            "Designer",          // 設計師
+            "SelfNote",          // 牆上的洞
+            "GoldenWing",        // 金神像
+            "MonsterEncounter",  // 遭遇戰
+            "MonsterEncounter"   // (故意多放一個怪物，模擬原版 10%~20% 踩雷機率喵！)
+        };
+
+        int randomIndex = QRandomGenerator::global()->bounded(possibleEvents.size());
+        ctx.eventSubtype = possibleEvents[randomIndex];
+
+        qDebug() << "🎲 盲盒開啟！本次問號事件搖中了：" << ctx.eventSubtype;
+
+        for (const QString& id : save->deckIds) {
+            ctx.currentDeck.append(CardFactory::createCard(id, nullptr));
+        }
+        for (const QString& id : save->relicIds) {
+            ctx.relics.append(RelicFactory::createRelic(id, nullptr));
+        }
+
+        EventLauncher* launcher = new EventLauncher(this);
+
+        // ========================================================
+        // 🌟 魔法 1：血量/金幣的即時反饋！
+        // 因為我們已經綁定了 Player，沙盒裡只要 modifyGold 或 setHp，
+        // 你的 TopBar 就會自動刷新數值！
+        // ========================================================
+        if (launcher->getPlayer()) {
+            m_topBar->bindPlayer(launcher->getPlayer());
+
+            // 可選果汁感：如果你的 TopBar 有 playPulseEffect() 這種 UI 彈跳函數，可以在這裡接上！
+            // connect(launcher->getPlayer(), &Player::hpChanged, m_topBar, &TopBar::playHpPulse);
+        }
+
+        // ========================================================
+        // 🌟 魔法 3：攔截卡牌獲取 (如果有對應訊號)
+        // ========================================================
+        // 假設你的 CardManager 有 cardAddedToDeck(Card* c) 訊號
+        /*
+        if (launcher->getCardManager()) {
+            connect(launcher->getCardManager(), &CardManager::cardAddedToDeck, this, [this](Card* c) {
+                // 飛向右上角的計牌器！
+                playLootMeteor(c->getImagePath(), QPoint(800, 450), QPoint(1400, 50), [this]() {
+                    m_topBar->refreshDeckCount();
+                    // 可以加個震動音效！
+                });
+            });
+        }
+        */
+
+        // ========================================================
+        // 📡 接收器 1：纯文字事件界面
+        // ========================================================
+        connect(launcher, &EventLauncher::showEventViewRequest, this, [this](EventBaseView* view) {
+            view->setParent(this);
+            view->setGeometry(-5, -5, 1610, 910);
+
+            m_stack->addWidget(view);
+            m_stack->setCurrentWidget(view);
+
+            view->raise();
+            m_topBarView->raise();
+            m_curtain->raise();
+            view->show();
+
+            m_fadeAnimation->disconnect();
+            m_fadeAnimation->setStartValue(1.0);
+            m_fadeAnimation->setEndValue(0.0);
+            connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+                m_curtain->hide();
+            });
+            m_fadeAnimation->start();
+        });
+
+        // ========================================================
+        // 📡 接收器 2：触发了遭遇战！(修复黑屏与闪退的核心)
+        // ========================================================
+        connect(launcher, &EventLauncher::showBattleViewRequest, this, [this](BattleView* view) {
+            // 🚨 救命拼图 1：登记战斗视图，供打赢后的战利品界面销毁使用
+            m_currentBattleView = view;
+
+            m_stack->addWidget(view);
+            m_stack->setCurrentWidget(view);
+
+            // 🚨 救命拼图 2：必须把问号里生成的新玩家，绑定给顶栏！
+            if (view->getEngine() && view->getEngine()->getPlayer()) {
+                m_topBar->bindPlayer(view->getEngine()->getPlayer());
+            }
+
+            m_topBarView->raise();
+            m_curtain->raise();
+
+            // 揭开黑幕，正式进入战斗
+            m_fadeAnimation->disconnect();
+            m_fadeAnimation->setStartValue(1.0);
+            m_fadeAnimation->setEndValue(0.0);
+            connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+                m_curtain->hide();
+            });
+            m_fadeAnimation->start();
+        });
+
+        // ========================================================
+        // 📡 接收器 3：纯文字事件结束，忠实执行结算合同
+        // ========================================================
+        connect(launcher, &EventLauncher::eventConcluded, this, [this](EventResult result) {
+
+            // 🚨 救命修复 1：【立刻】结算数据！绝对不能放进动画的回呼函数里！
+            // 因为沙盒马上就要被销毁了，必须趁卡牌指针还活着，赶紧把 ID 记下来！
+            GlobalSaveData* save = GlobalSaveData::getInstance();
+            save->currentHp = result.remainingHp;
+            save->maxHp = result.finalMaxHp;
+            save->gold = result.currentGold;
+
+            if (result.deckChanged) {
+                save->deckIds.clear();
+                for (Card* c : result.resultDeck) save->deckIds.append(c->getId());
+            }
+            if (result.relicsChanged) {
+                save->relicIds.clear();
+                for (Relic* r : result.resultRelics) save->relicIds.append(r->getId());
+            }
+
+            // 🚨 救命修复 2：【立刻】刷新顶栏！修复计牌器不更新的问题！
+            m_topBar->updateGold(save->gold);
+            m_topBar->updateHp(save->currentHp, save->maxHp);
+            m_topBar->refreshDeckCount();
+
+            // ========================================================
+            // 然后才开始播放那 350ms 的退场黑幕动画 (此时数据已安全落袋)
+            // ========================================================
+            m_curtain->raise();
+            m_curtain->show();
+            m_fadeAnimation->stop();
+            m_fadeAnimation->setStartValue(0.0);
+            m_fadeAnimation->setEndValue(1.0);
+            m_fadeAnimation->disconnect();
+
+            connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+                // 仅保留 UI 视图清理和地图推进
+                m_mapManager->m_currentLayer = m_lastClickedNode.layer;
+                m_mapManager->m_currentNodeId = m_lastClickedNode.id;
+                m_mapManager->m_visitedNodes.append(m_lastClickedNode.id);
+                m_mapManager->refreshNodeStates();
+
+                QWidget* currentEventWidget = m_stack->currentWidget();
+                m_stack->setCurrentIndex(1); // 回到大地图
+                if (currentEventWidget != m_stack->widget(1)) {
+                    m_stack->removeWidget(currentEventWidget);
+                    currentEventWidget->deleteLater(); // 👈 補上這句！GameWindow 親自優雅收屍！
+                }
+
+                m_fadeAnimation->disconnect();
+                m_fadeAnimation->setStartValue(1.0);
+                m_fadeAnimation->setEndValue(0.0);
+                connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+                    m_curtain->hide();
+                });
+                m_fadeAnimation->start();
+            });
+            m_fadeAnimation->start();
+        });
+
+        // 📡 接收器 4：战斗打赢了！
+        connect(launcher, &EventLauncher::battleEncounterFinished, this, &GameWindow::onBattleConcluded);
+
+        // ========================================================
+        // 🚀 先发射启动！让沙盒默默把旧卡牌和旧遗物加载好...
+        // 这期间不会触发任何流星！
+        // ========================================================
+        launcher->launch(ctx);
+
+        // ========================================================
+        // 🌟 魔法 2：在沙盒就绪后，接上唯一合法的遗物监听天线！
+        // 只有你在事件中点击获得了【新遗物】，才会触发这门全域大炮！
+        // ========================================================
+        if (launcher->getRelicManager()) {
+            connect(launcher->getRelicManager(), &RelicManager::relicAdded, this, [this](Relic* r) {
+                // 從螢幕正中央 (800, 450) 發射
+                QPointF startPos(800, 450);
+
+                // 終點：計算它在 RelicTray 裡的下一個空位
+                int trayStartX = 10;
+                int trayStartY = 55;
+                int spacing = 8;
+                int currentIndex = m_globalRelics.size();
+                QPointF endPos(trayStartX + currentIndex * (48 + spacing) + 24, trayStartY + 24);
+
+                // 發射神級粒子特效！(藍色遺物軌跡)
+                playGlobalParticleEffect(startPos, endPos, "Relic", [this, r]() {
+                    // 🔴 必須等流星落地（onLanded 回呼），才真正將遺物加入頂欄！
+                    r->setParent(this);
+                    m_globalRelics.append(r);
+                    m_globalRelicTray->setRelics(m_globalRelics);
+                });
+            });
+        }
+    });
+
+    m_fadeAnimation->start();
+}
+
+void GameWindow::playLootMeteor(const QString& imagePath, QPoint startPos, QPoint endPos, std::function<void()> onLanded) {
+    // 1. 創造幽靈圖層
+    QLabel* meteor = new QLabel(this);
+    QPixmap pix(imagePath);
+    if(pix.isNull()) pix = QPixmap(":/resources/images/ui/default_meteor.png"); // 防呆機制
+
+    // 縮放到合適的流星大小 (比如 64x64)
+    meteor->setPixmap(pix.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    meteor->setAttribute(Qt::WA_TransparentForMouseEvents); // 滑鼠穿透，不阻擋玩家操作
+    meteor->setGeometry(startPos.x(), startPos.y(), 64, 64);
+
+    // 確保流星在最頂層
+    meteor->show();
+    meteor->raise();
+    m_topBarView->raise(); // 確保頂欄永遠壓在上面，這樣流星會有一種「飛進去」的感覺
+
+    // 2. 賦予靈魂：飛行軌跡動畫
+    QPropertyAnimation* anim = new QPropertyAnimation(meteor, "pos");
+    anim->setDuration(500); // 飛行時間 0.5秒
+    anim->setStartValue(startPos);
+    anim->setEndValue(endPos);
+    anim->setEasingCurve(QEasingCurve::InQuad); // 漸進加速，打擊感更強！
+
+    // 3. 抵達終點：銷毀幽靈，執行真正的數據入帳！
+    connect(anim, &QPropertyAnimation::finished, this, [meteor, onLanded]() {
+        meteor->hide();
+        meteor->deleteLater();
+        if (onLanded) onLanded(); // 🔴 執行入帳！
+    });
+
+    // 點火發射！
+    anim->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void GameWindow::playGlobalParticleEffect(QPointF startPos, QPointF endPos, const QString& type, std::function<void()> onLanded) {
+    // ========================================================
+    // 🔮 跨次元結界！覆蓋在整個 GameWindow 之上
+    // ========================================================
+    QGraphicsView* fxView = new QGraphicsView(this); // 直接掛在 GameWindow 上
+    fxView->resize(1600, 900);
+    fxView->setStyleSheet("background: transparent; border: none;");
+    fxView->setAttribute(Qt::WA_TransparentForMouseEvents);
+    fxView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    fxView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    QGraphicsScene* fxScene = new QGraphicsScene(0, 0, 1600, 900, fxView);
+    fxView->setScene(fxScene);
+    fxView->show();
+    fxView->raise(); // 🔴 絕對壓制，蓋過所有事件視窗和 TopBar！
+
+    // 拋物線控制點 (向上拋的弧度)
+    QPointF ctrlPos(startPos.x() + (endPos.x() - startPos.x()) * 0.4, startPos.y() - 300);
+
+    const int totalSteps = 50;
+    const int interval = 16;
+
+    // 🌟 光球與顏色設定
+    auto* glowOrb = new QGraphicsEllipseItem(-25, -25, 50, 50);
+    QRadialGradient gradient(0, 0, 25);
+    gradient.setColorAt(0.0, QColor(255, 255, 255, 255));
+
+    QColor particleColor;
+    if (type == "Relic") {
+        gradient.setColorAt(0.3, QColor(50, 200, 255, 255));
+        gradient.setColorAt(1.0, QColor(0, 100, 255, 0));
+        particleColor = QColor(100, 220, 255, 200);
+    } else if (type == "Gold") {
+        gradient.setColorAt(0.3, QColor(255, 200, 50, 255));
+        gradient.setColorAt(1.0, QColor(255, 100, 0, 0));
+        particleColor = QColor(255, 220, 100, 200);
+    } else { // Card 或其他
+        gradient.setColorAt(0.3, QColor(200, 50, 255, 255));
+        gradient.setColorAt(1.0, QColor(100, 0, 255, 0));
+        particleColor = QColor(220, 100, 255, 200);
+    }
+
+    glowOrb->setBrush(gradient);
+    glowOrb->setPen(Qt::NoPen);
+    glowOrb->setPos(startPos);
+
+    auto* blur = new QGraphicsBlurEffect();
+    blur->setBlurRadius(10);
+    glowOrb->setGraphicsEffect(blur);
+    fxScene->addItem(glowOrb);
+
+    struct TrailParticle { QGraphicsEllipseItem* dot; qreal dx, dy; int age; int life; };
+    auto* trails = new QList<TrailParticle>();
+    int* pStep = new int(0);
+    auto* timer = new QTimer(this);
+
+    connect(timer, &QTimer::timeout, this, [=]() {
+        (*pStep)++;
+        int s = *pStep;
+        qreal t = qreal(s) / totalSteps;
+        qreal easedT = t * t * (3 - 2 * t);
+        qreal u = 1.0 - easedT;
+        QPointF currentPos = u * u * startPos + 2 * u * easedT * ctrlPos + easedT * easedT * endPos;
+        glowOrb->setPos(currentPos);
+        glowOrb->setScale(1.0 + std::sin(t * 3.14159) * 0.3);
+
+        for(int i = 0; i < 2; i++) {
+            auto* dot = new QGraphicsEllipseItem(-4, -4, 8, 8);
+            dot->setBrush(particleColor);
+            dot->setPen(Qt::NoPen);
+            dot->setPos(currentPos + QPointF((QRandomGenerator::global()->generateDouble()-0.5)*20, (QRandomGenerator::global()->generateDouble()-0.5)*20));
+            fxScene->addItem(dot);
+
+            qreal dx = (QRandomGenerator::global()->generateDouble() - 0.5) * 4;
+            qreal dy = (QRandomGenerator::global()->generateDouble() - 0.5) * 4;
+            trails->append({dot, dx, dy, 0, 10 + QRandomGenerator::global()->bounded(8)});
+        }
+
+        for (int i = trails->size() - 1; i >= 0; --i) {
+            auto& tr = (*trails)[i];
+            tr.age++;
+            tr.dot->moveBy(tr.dx, tr.dy);
+            qreal lifeRatio = qreal(tr.age) / tr.life;
+            tr.dot->setOpacity(1.0 - lifeRatio);
+            tr.dot->setScale(1.0 - lifeRatio * 0.5);
+            if (tr.age >= tr.life) {
+                fxScene->removeItem(tr.dot);
+                delete tr.dot;
+                trails->removeAt(i);
+            }
+        }
+
+        // 💥 抵達終點
+        if (s >= totalSteps) {
+            timer->stop();
+
+            // 🔴 抵達終點的瞬間，執行入帳回呼！(完美解決延遲 800ms 的硬編碼問題)
+            if (onLanded) onLanded();
+
+            for(int i = 0; i < 10; i++) {
+                auto* spark = new QGraphicsEllipseItem(-3, -3, 6, 6);
+                spark->setBrush(Qt::white);
+                spark->setPen(Qt::NoPen);
+                spark->setPos(endPos);
+                fxScene->addItem(spark);
+
+                qreal angle = i * (3.14159 * 2 / 10.0);
+                qreal speed = 5.0 + QRandomGenerator::global()->generateDouble() * 3.0;
+                qreal vX = std::cos(angle) * speed;
+                qreal vY = std::sin(angle) * speed;
+
+                auto* sparkTimer = new QTimer(fxView);
+                int* sparkAge = new int(0);
+                connect(sparkTimer, &QTimer::timeout, fxView, [=]() {
+                    (*sparkAge)++;
+                    spark->moveBy(vX, vY);
+                    spark->setOpacity(1.0 - (*sparkAge) / 12.0);
+                    if(*sparkAge >= 12) {
+                        sparkTimer->stop();
+                        fxScene->removeItem(spark);
+                        delete spark;
+                        delete sparkAge;
+                        sparkTimer->deleteLater();
+                    }
+                });
+                sparkTimer->start(16);
+            }
+
+            for (auto& tr : *trails) { fxScene->removeItem(tr.dot); delete tr.dot; }
+            delete trails;
+            fxScene->removeItem(glowOrb);
+            delete glowOrb;
+            delete pStep;
+            timer->deleteLater();
+
+            QTimer::singleShot(500, fxView, [fxView]() {
+                fxView->hide();
+                fxView->deleteLater();
+            });
+        }
+    });
+    timer->start(interval);
 }

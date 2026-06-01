@@ -78,3 +78,12 @@ void Fighter::setHp(int hp) {
         die();
     }
 }
+
+void Fighter::setMaxHp(int maxHp) {
+    m_maxHp = std::max(1, maxHp);
+    // 如果当前血量超过了新上限，则同步扣减当前血量
+    if (m_hp > m_maxHp) {
+        m_hp = m_maxHp;
+    }
+    emit hpChanged(m_hp, m_maxHp);
+}

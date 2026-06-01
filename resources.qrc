@@ -51,7 +51,6 @@
         <file>resources/images/events/Chest/Chest_open.png</file>
         <file>resources/images/events/Chest/Background.png</file>
         <file>resources/images/events/Chest/Skip-055246b5-b7d6-46de-9fe4-8d4af5c814cc.jpg</file>
-        <file>resources/images/events/Campfire/rear_side-removebg-preview.png</file>
         <file>resources/images/events/Merchant/merchant.png</file>
         <file>resources/images/events/Merchant/GO_ahead.png</file>
         <file>resources/images/events/Merchant/arm.png</file>
@@ -59,7 +58,16 @@
         <file>resources/images/events/Merchant/exit.png</file>
         <file>resources/images/events/Merchant/label.png</file>
         <file>resources/images/events/Merchant/remove.png</file>
-        <file>resources/images/events/Merchant/soldout.jpeg</file>
+        <file>resources/images/events/Merchant/soldout-removebg-preview.png</file>
+        <file>resources/images/events/Random/Univ/background.jpeg</file>
+        <file>resources/images/events/Random/Univ/button.png</file>
+        <file>resources/images/events/Random/Univ/title.png</file>
+        <file>resources/images/events/Random/Big_fish/Fishing.jpg</file>
+        <file>resources/images/events/Random/Cleric/Cleric.jpg</file>
+        <file>resources/images/events/Random/Designer/Designer.jpg</file>
+        <file>resources/images/events/Random/Designer/Punched.png</file>
+        <file>resources/images/events/Random/SelfNote/SelfNote.jpg</file>
+        <file>resources/images/events/Random/Goldenwing/GoldenWing.jpg</file>
         <file>resources/images/relics/relic_anchor.png</file>
         <file>resources/images/relics/relic_bag_of_preparation.png</file>
         <file>resources/images/relics/relic_orichalcum.png</file>

@@ -59,13 +59,12 @@ void RelicItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
     painter->setRenderHint(QPainter::Antialiasing);
 
     // ========================================================
-    // 🎨 1. 绘制遗物本体
+    // 🎨 1. 绘制遗物本体 (坚决使用我们在构造函数里预加载的高速缓存！)
     // ========================================================
     if (!m_pixmap.isNull()) {
-        // 如果有图片，直接把图片缩放到 48x48 并画出来！
         painter->drawPixmap(boundingRect().toRect(), m_pixmap.scaled(48, 48, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
     } else {
-        // 【防闪退兜底机制】：没找到图片就画一个原来的带字灰圈圈
+        // 【防闪退兜底机制】：没找到图片就画一个带字灰圈圈
         painter->setPen(QPen(QColor(200, 200, 200), 2));
         painter->setBrush(QColor(40, 40, 45));
         painter->drawEllipse(2, 2, 44, 44);
@@ -81,18 +80,18 @@ void RelicItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
     // ========================================================
     if (m_displayCounter >= 0) {
         QFont font = painter->font();
-        font.setPixelSize(16); // 稍微放大一点，让数字更显眼
+        font.setPixelSize(16); // 保持我们更具张力的 16 号字！
         font.setBold(true);
         painter->setFont(font);
 
         QString counterStr = QString::number(m_displayCounter);
         QRectF textRect(0, 28, 45, 20); // 数字显示在右下角
 
-        // 🔴 细节魔法：先画一层黑色的“描边阴影”，防止数字和明亮的遗物图片混在一起看不清！
+        // 🔴 细节魔法：黑色的“描边阴影”，防止数字和明亮的遗物图片混在一起！
         painter->setPen(QColor(0, 0, 0, 200));
-        painter->drawText(textRect.translated(1, 1), Qt::AlignRight, counterStr); // 往右下偏移 1 像素
+        painter->drawText(textRect.translated(1, 1), Qt::AlignRight, counterStr);
 
-        // 然后再画金灿灿的正文数字
+        // 金灿灿的正文数字
         painter->setPen(QColor(241, 196, 15));
         painter->drawText(textRect, Qt::AlignRight, counterStr);
     }

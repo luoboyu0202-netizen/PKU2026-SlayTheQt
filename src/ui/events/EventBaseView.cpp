@@ -72,7 +72,7 @@ void EventBaseView::setLeaveButtonVisible(bool visible) {
 void EventBaseView::showDarkOverlay(const QString& text) {
     if (!m_darkOverlay) {
         m_darkOverlay = new QGraphicsRectItem(-5000, -5000, 12000, 12000);
-        m_darkOverlay->setBrush(QColor(0, 0, 0, 80));
+        m_darkOverlay->setBrush(QColor(0, 0, 0, 220));
         m_darkOverlay->setZValue(95);
         m_scene->addItem(m_darkOverlay);
 

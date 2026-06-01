@@ -14,6 +14,7 @@ public:
                 parent) {
 
         m_counter = -1;
+        m_imagePath = ":/resources/images/relics/relic_bag_of_preparation.png";
     }
 
     // ========================================================

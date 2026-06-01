@@ -77,6 +77,12 @@ StatusIconItem::StatusIconItem(StatusType type, int amount, QGraphicsItem* paren
         m_tooltipText =QStringLiteral("地狱狂徒\n每当你抽到一张名字中含有“打击”的牌时，立即将其打出。").arg(m_amount);
         break;
         // ... 其他状态 ...
+    case StatusType::Confusion:
+        m_icon = QPixmap(":/resources/images/icons/HellFiend_icon.png");
+        // 原作中是一个被铁链锁住的重物图标
+        m_tooltipText =QStringLiteral("混乱\n你感到蛇教的力量在祝福着你，但代价是...?").arg(m_amount);
+        break;
+        // ... 其他状态 ...
     }
 
     // ========================================================

@@ -34,3 +34,33 @@ Relic* RelicFactory::createRelic(const QString& relicId, QObject* parent) {
     qWarning() << "[RelicFactory] 找不到遗物 ID:" << relicId;
     return relic;
 }
+
+QString RelicFactory::generateRandomRelic(const QStringList& ownedRelicIds) {
+    // 1. 羅列所有可能掉落的遺物池
+    QStringList allRelics = {
+        "relic_pen_nib",
+        "relic_orichalcum",
+        "relic_bag_of_preparation",
+        "relic_anchor",
+        "relic_burning_blood",
+        "relic_vajra",
+        "relic_snecko_eye"
+    };
+
+    // 2. 查戶口：剔除玩家已經擁有的遺物
+    QStringList availableRelics;
+    for (const QString& id : allRelics) {
+        if (!ownedRelicIds.contains(id)) {
+            availableRelics.append(id);
+        }
+    }
+
+    // 3. 如果遺物池被抽乾了，返回空字串
+    if (availableRelics.isEmpty()) {
+        return "";
+    }
+
+    // 4. 隨機搖出一個返回
+    int randomIndex = QRandomGenerator::global()->bounded(availableRelics.size());
+    return availableRelics[randomIndex];
+}
