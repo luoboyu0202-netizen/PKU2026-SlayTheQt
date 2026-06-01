@@ -48,7 +48,6 @@
         <file>resources/images/events/Campfire/Smith.png</file>
         <file>resources/images/events/Campfire/Rest.png</file>
         <file>resources/images/events/Campfire/GO_ahead.png</file>
-        <file>resources/images/events/Chest/Chest.png</file>
         <file>resources/images/events/Chest/Chest_open.png</file>
         <file>resources/images/events/Chest/Background.png</file>
         <file>resources/images/events/Chest/Skip-055246b5-b7d6-46de-9fe4-8d4af5c814cc.jpg</file>
@@ -85,5 +84,7 @@
         <file>resources/images/map_images/TitleMenuView.png</file>
         <file>resources/images/events/Campfire/Bonfire.png</file>
         <file>resources/images/map_images/merchant.png</file>
+        <file>resources/images/events/Chest/Skip.png</file>
+        <file>resources/images/events/Chest/Chest.png</file>
     </qresource>
 </RCC>

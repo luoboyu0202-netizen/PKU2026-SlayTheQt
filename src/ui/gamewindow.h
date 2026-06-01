@@ -21,6 +21,7 @@ public:
 
     void enterCampfireEvent();
     void enterMerchantEvent(); // 🔴 新增：进入商店的专属通道！
+    void enterChestEvent();
 
 private slots:
     // 🎬【队友新增】：处理开始界面的黑场转场动画
