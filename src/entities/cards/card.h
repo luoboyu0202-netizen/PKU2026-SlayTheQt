@@ -57,9 +57,16 @@ public:
         , m_type(CardType::Attack)
         , m_target(CardTarget::None)
         , m_rarity(CardRarity::Common) // 默认给个普通稀有度
+        , m_owner(nullptr) // 🔴 初始化時預設為空
     {
     }
     virtual ~Card() = default;
+
+    // ========================================================
+    // 🔗 靈魂綁定：設定與獲取卡牌的主人！
+    // ========================================================
+    void setOwner(Player* owner) { m_owner = owner; }
+    Player* getOwner() const { return m_owner; }
 
     virtual bool requiresTarget() const { return m_target == CardTarget::Enemy; }
     bool isUpgraded() const { return m_isUpgraded; }
@@ -129,6 +136,9 @@ protected:
     CardType m_type;
     CardTarget m_target;
     CardRarity m_rarity; // 🌟 稀有度基因
+
+    // 🔴 核心牽絆：卡牌的主人指標
+    Player* m_owner;
 
     // 状态标志位
     bool m_isUnplayable = false;

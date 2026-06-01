@@ -14,6 +14,7 @@ public:
                 parent) {
 
         m_counter = -1; // 不需要显示数字
+        m_imagePath = ":/resources/images/relics/relic_anchor.png";
     }
 
     // ========================================================

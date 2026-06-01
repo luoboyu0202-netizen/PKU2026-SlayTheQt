@@ -16,8 +16,6 @@ public:
     // 战斗初始化：将卡组放入抽牌堆并洗牌
     void initializeDeck(const QList<Card*>& masterDeck);
 
-
-
     // 核心流转动作
     void drawCards(int amount);
     void endTurnProcess(); // 触发回合结束结算（虚无消耗，其余弃牌）
@@ -79,6 +77,10 @@ public:
     // 🔴【商店用】：永久删除一张卡牌（从所有堆中移除）
     void removeCardPermanently(Card* card);
 
+
+    // 🔴【设计师事件用】：随机升级 N 张卡牌
+    void upgradeRandomCards(int count);
+    QList<Card*> getUpgradableCards() const;
 
 signals:
     // UI 监听这些信号来播放飞行动画和更新数字贴图

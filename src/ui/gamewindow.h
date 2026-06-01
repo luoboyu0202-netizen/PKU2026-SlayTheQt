@@ -13,15 +13,24 @@
 #include "ui/RewardScreen.h"
 #include "ui/TopBar.h"
 #include "ui/RelicTray.h"
+#include <functional> // 記得引入 functional
+
 
 class GameWindow : public QWidget {
     Q_OBJECT
 public:
     explicit GameWindow(QWidget *parent = nullptr);
 
+    // 全域粒子流星大砲！
+    // type: "Relic" (藍色), "Card" (紫色), "Gold" (金色)
+    void playGlobalParticleEffect(QPointF startPos, QPointF endPos, const QString& type, std::function<void()> onLanded);
+
     void enterCampfireEvent();
     void enterMerchantEvent(); // 🔴 新增：进入商店的专属通道！
     void enterChestEvent();
+    void enterQuestionMarkEvent(const MapNode& node);
+    // 全域流星特效大砲：傳入圖片路徑、起點、終點、以及抵達後要執行的回呼函數
+    void playLootMeteor(const QString& imagePath, QPoint startPos, QPoint endPos, std::function<void()> onLanded);
 
 private slots:
     // 🎬【队友新增】：处理开始界面的黑场转场动画

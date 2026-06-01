@@ -21,12 +21,15 @@ struct EventContext {
     QList<Card*> currentDeck;
     QList<Relic*> relics;
     EventType eventType;
-    QString eventSubtype; // 问号事件的子类型ID（可选）
+    QString eventSubtype;
+
+    int currentLayer = 0; // 🔴 補上這行！GameWindow 生成戰鬥時需要它！
 };
 
 // 输出合同：事件结束后还给地图组的结算报告
 struct EventResult {
     int remainingHp;
+    int finalMaxHp;     // 🔴 救命拼圖：必須加上這個，否則甜甜圈加的血上限帶不出來！
     int currentGold;
     QList<Card*> resultDeck;
     QList<Relic*> resultRelics;
@@ -35,5 +38,5 @@ struct EventResult {
     bool deckChanged = false;
     bool relicsChanged = false;
     bool goldChanged = false;
-    bool playerDead = false; // 玩家在事件中死亡（如在问号战斗中阵亡）
+    bool playerDead = false;
 };

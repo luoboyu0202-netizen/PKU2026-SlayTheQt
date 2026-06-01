@@ -10,7 +10,7 @@ class testcard : public Card {
     Q_OBJECT
 public:
     explicit testcard(QObject* parent = nullptr)
-        : Card("test", QStringLiteral("測試卡"), 1, false, parent) {
+        : Card("card_test", QStringLiteral("測試卡"), 1, false, parent) {
 
         m_baseValue = 1000;       // 伤害
         m_secondaryValue = 1;  // 易伤层数
