@@ -20,6 +20,7 @@ public:
     explicit GameWindow(QWidget *parent = nullptr);
 
     void enterCampfireEvent();
+    void enterMerchantEvent(); // 🔴 新增：进入商店的专属通道！
 
 private slots:
     // 🎬【队友新增】：处理开始界面的黑场转场动画
@@ -53,6 +54,7 @@ private:
     TopBar* m_topBar;
     QGraphicsView* m_topBarView;
     RelicTray* m_globalRelicTray = nullptr;
+    QList<Relic*> m_globalRelics;
 
     MapNode m_lastClickedNode;       // 记住刚刚点了哪个节点，为了打赢后解锁
 

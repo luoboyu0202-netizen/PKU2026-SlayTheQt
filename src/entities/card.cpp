@@ -1,34 +1,20 @@
 #include "entities/cards/Card.h"
-#include "logic/BattleEngine.h" // 🔴 在这里包含，因为我们已经在 .cpp 里了，很安全！
+#include "logic/BattleEngine.h" // 🔴 再次接通与前线指挥部的通讯！
 #include <QDebug>
-
-Card::Card(const QString& id, const QString& name, int cost, bool isEthereal, QObject* parent)
-    : QObject(parent), m_id(id), m_name(name), m_cost(cost), m_isEthereal(isEthereal),
-    m_description(""), m_type(CardType::Attack), m_target(CardTarget::None) {}
-
-void Card::upgrade() {
-    if (!m_isUpgraded) {
-        m_isUpgraded = true;
-        m_name += "+";
-        m_id += "+";   // 🔴 极其关键：身份证号加 +，给存档和工厂看的！
-    }
-}
 
 QString Card::getDynamicDescription(Player* source, Fighter* target) {
     QString finalDesc = m_rawDescription;
 
-    // ========================================================
-    // 🛡️【核心断网判定】：只有传入了活生生的 source（玩家），才算处于真实战斗！
-    // 火堆里 source 为 nullptr，直接无痛进入安全模式！
-    // ========================================================
     bool isInCombat = (source != nullptr);
 
     // ⚔️ 1. 解析伤害标签 !D!
     if (finalDesc.contains("!D!")) {
-        int currentDmg = m_baseValue; // 默认基础伤害
+        int currentDmg = m_baseValue;
 
-        // 🔴 只有战斗中才去查引擎，绝不跨界！
         if (isInCombat) {
+            // ========================================================
+            // 🔴 终极恢复：完美调用引擎的快照计算！钢笔尖起死回生！
+            // ========================================================
             BattleEngine* engine = BattleEngine::getInstance();
             if (engine) {
                 currentDmg = engine->calculateSnapshotDamage(source, target, m_baseValue);
@@ -48,9 +34,8 @@ QString Card::getDynamicDescription(Player* source, Fighter* target) {
 
     // 🛡️ 2. 解析格挡标签 !B!
     if (finalDesc.contains("!B!")) {
-        int currentBlock = m_baseValue; // 默认基础格挡
+        int currentBlock = m_baseValue;
 
-        // 🔴 同理，战斗中才算 Buff
         if (isInCombat) {
             currentBlock = StatusManager::calculateBlock(source, m_baseValue);
         }
@@ -69,6 +54,5 @@ QString Card::getDynamicDescription(Player* source, Fighter* target) {
         finalDesc.replace("!M!", QString::number(m_secondaryValue));
     }
 
-    // 🟢 极其老实地直接 return，绝不动你的 \n 和原本的架构！
     return finalDesc;
 }

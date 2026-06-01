@@ -26,6 +26,7 @@ public:
         update(); // 别忘了触发重绘！
     }
 
+
 public slots:
     // 接收底层信号的槽函数
     void updateHp(int current, int max);

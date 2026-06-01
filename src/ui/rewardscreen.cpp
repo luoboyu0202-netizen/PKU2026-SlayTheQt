@@ -3,10 +3,15 @@
 #include <QDebug>
 #include "logic/cardfactory.h"
 #include "logic/RelicFactory.h" // 🔴 极其关键：引入你的遗物工厂，用来查户口！
+#include <QGraphicsScene>
+#include <QGraphicsView>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsBlurEffect>
+#include <QPropertyAnimation>
+#include <QTimer>
+#include <cmath>
+#include <QRandomGenerator>
 
-// ==========================================
-// 🎟️ 单个条目样式优化 (更贴近原版)
-// ==========================================
 // ==========================================
 // 🎟️ 单个条目样式优化 (支持高清图标排版)
 // ==========================================
@@ -205,15 +210,13 @@ void RewardScreen::loadRewards(const BattleResult& result) {
     }
 }
 
-// ==========================================
-// 💥 顶级特效引擎：瞬间消失与纯净图标飞行
-// ==========================================
 void RewardScreen::animateAndRemoveItem(RewardItemButton* btn) {
     // 【极其关键】：在 btn 被 delete 之前，赶紧把它的数据复印保存下来！
     RewardItemButton::RewardType type = btn->getType();
     QString rId = btn->relicId;
     int gAmount = btn->goldAmount;
 
+    // 拿到被点击按钮在全局窗口中的中心坐标，作为流星起飞点
     QPoint startCenter = btn->mapTo(this, btn->rect().center());
 
     btn->hide();
@@ -221,91 +224,197 @@ void RewardScreen::animateAndRemoveItem(RewardItemButton* btn) {
     btn->deleteLater();
 
     // ==========================================
-    // 3. 🖼️ 量身定制：只让纯净的“实体图标”飞出去！
-    // ==========================================
-    QLabel* ghostIcon = new QLabel(this);
-    ghostIcon->setAttribute(Qt::WA_TransparentForMouseEvents); // 幽灵不挡鼠标点击
-
-    if (btn->getType() == RewardItemButton::Gold) {
-        // 💰 纯净的金币图标
-        ghostIcon->setFixedSize(30, 30);
-        ghostIcon->setStyleSheet("background-color: #F1C40F; border-radius: 15px; border: 2px solid #D4AC0D;");
-    }
-    else if (btn->getType() == RewardItemButton::Relic) {
-        // 🏺 真正的遗物贴图！(直接复用你 RelicItem 里的路径逻辑)
-        ghostIcon->setFixedSize(48, 48);
-        QPixmap pix(QString(":/resources/images/relics/%1.png").arg(btn->relicId));
-        if (!pix.isNull()) {
-            ghostIcon->setPixmap(pix.scaled(48, 48, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
-        } else {
-            // 防闪退兜底：没图就画个带字的灰圈
-            ghostIcon->setStyleSheet("background-color: #2c3e50; border-radius: 24px; border: 2px solid #bdc3c7; color: white; font-weight: bold;");
-            ghostIcon->setText(btn->relicId.left(3));
-            ghostIcon->setAlignment(Qt::AlignCenter);
-        }
-    }
-    else {
-        // 🃏 卡牌背面图标
-        ghostIcon->setFixedSize(40, 56);
-        ghostIcon->setStyleSheet("background-color: #3b5a7a; border: 2px solid #5a7a9a; border-radius: 4px;");
-    }
-
-    // 把纯净图标的中心点，严丝合缝地对齐到刚刚被你点掉的按钮中心
-    ghostIcon->move(startCenter - QPoint(ghostIcon->width() / 2, ghostIcon->height() / 2));
-    ghostIcon->show();
-
-    // ==========================================
-    // 4. 🎯 精确计算入局坐标
+    // 🎯 1. 精确计算入局终点坐标
     // ==========================================
     QPoint targetPos;
     GlobalSaveData* save = GlobalSaveData::getInstance();
 
-    if (btn->getType() == RewardItemButton::Gold) {
-        targetPos = QPoint(1200, 24);
+    if (type == RewardItemButton::Gold) {
+        targetPos = QPoint(1200, 24); // 顶栏金币位置
     }
-    else if (btn->getType() == RewardItemButton::Relic) {
-        // 🔴 极其聪明的位置预判：
-        // 因为你在 onRewardItemClicked 里已经把遗物 append 进 save 了，
-        // 所以现在 size() - 1 就是它在 RelicTray 里的绝对索引位！
+    else if (type == RewardItemButton::Relic) {
+        // 🔴 极其聪明的位置预判：计算它将要落入 RelicTray 的哪个槽位
         int currentRelicIndex = save->relicIds.size();
         if (currentRelicIndex < 0) currentRelicIndex = 0;
-
         int trayStartX = 10;
         int trayStartY = 55;
         int spacing = 8;
-
-        targetPos = QPoint(trayStartX + currentRelicIndex * (48 + spacing), trayStartY);
+        // 加上半径偏移，让流星中心砸准图标中心
+        targetPos = QPoint(trayStartX + currentRelicIndex * (48 + spacing) + 24, trayStartY + 24);
     }
     else {
-        targetPos = QPoint(1400, 24);
+        targetPos = QPoint(1400, 24); // 顶栏牌库位置
     }
 
     // ==========================================
-    // 5. ✈️ 纯享版平滑飞行特效
+    // 🌌 2. 创建临时特效结界 (QGraphicsView)
     // ==========================================
-    // 🔴 这一次我们不改变大小了，就让原汁原味的 48x48 遗物图飞过去！
-    QPropertyAnimation* flyAnim = new QPropertyAnimation(ghostIcon, "pos");
-    flyAnim->setStartValue(ghostIcon->pos());
-    flyAnim->setEndValue(targetPos);
-    flyAnim->setDuration(550); // 0.55秒飞达，快准狠
-    flyAnim->setEasingCurve(QEasingCurve::InOutQuad);
+    // 为了播放粒子特效，我们在 RewardScreen 顶层盖一层全透明的画布
+    QGraphicsView* fxView = new QGraphicsView(this);
+    fxView->resize(this->size());
+    fxView->setStyleSheet("background: transparent; border: none;");
+    fxView->setAttribute(Qt::WA_TransparentForMouseEvents); // 绝对不能挡住玩家鼠标
+    fxView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    fxView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    // 🔴 核心魔法：当飞行到达终点时！
-    connect(flyAnim, &QPropertyAnimation::finished, this, [this, ghostIcon, type, rId, gAmount]() {
-        ghostIcon->deleteLater(); // 1. 幽灵功成身退，销毁自己
+    QGraphicsScene* fxScene = new QGraphicsScene(0, 0, this->width(), this->height(), fxView);
+    fxView->setScene(fxScene);
+    fxView->show();
+    fxView->raise();
 
-        // 2. 扣动扳机！通知司令部更新 UI 并且数据入账！
-        if (type == RewardItemButton::Relic) {
-            emit relicFlightFinished(rId);
-        } else if (type == RewardItemButton::Gold) {
-            emit goldFlightFinished(gAmount);
-        } else if (type == RewardItemButton::Card) {
-            // 🔴【新增】：卡牌幽灵飞到总牌库了！大喊一声！
-            emit deckUpdated();
+    // ==========================================
+    // ☄️ 3. 释放流星与星尘拖尾 (移植商店顶级特效)
+    // ==========================================
+    QPointF startPos(startCenter);
+    QPointF endPos(targetPos);
+
+    // 贝塞尔向上抛物线控制点
+    QPointF ctrlPos(startPos.x() + (endPos.x() - startPos.x()) * 0.4, startPos.y() - 300);
+
+    const int totalSteps = 50;
+    const int interval = 16;
+
+    // 高燃核心光球 (根据类型换颜色)
+    auto* glowOrb = new QGraphicsEllipseItem(-25, -25, 50, 50);
+    QRadialGradient gradient(0, 0, 25);
+    gradient.setColorAt(0.0, QColor(255, 255, 255, 255));
+
+    // 🔴 颜色区分魔法：金币是金黄，遗物是幽蓝，卡牌是紫红！
+    if (type == RewardItemButton::Gold) {
+        gradient.setColorAt(0.3, QColor(255, 220, 50, 255));
+        gradient.setColorAt(1.0, QColor(255, 100, 0, 0));
+    } else if (type == RewardItemButton::Relic) {
+        gradient.setColorAt(0.3, QColor(50, 200, 255, 255));
+        gradient.setColorAt(1.0, QColor(0, 100, 255, 0));
+    } else {
+        gradient.setColorAt(0.3, QColor(200, 50, 255, 255));
+        gradient.setColorAt(1.0, QColor(100, 0, 255, 0));
+    }
+
+    glowOrb->setBrush(gradient);
+    glowOrb->setPen(Qt::NoPen);
+    glowOrb->setPos(startPos);
+
+    auto* blur = new QGraphicsBlurEffect();
+    blur->setBlurRadius(10);
+    glowOrb->setGraphicsEffect(blur);
+    fxScene->addItem(glowOrb);
+
+    struct TrailParticle { QGraphicsEllipseItem* dot; qreal dx, dy; int age; int life; };
+    auto* trails = new QList<TrailParticle>();
+
+    int* pStep = new int(0);
+    auto* timer = new QTimer(this);
+
+    connect(timer, &QTimer::timeout, this, [=]() {
+        (*pStep)++;
+        int s = *pStep;
+        qreal t = qreal(s) / totalSteps;
+
+        // 🚀 贝塞尔曲线运动
+        qreal easedT = t * t * (3 - 2 * t);
+        qreal u = 1.0 - easedT;
+        QPointF currentPos = u * u * startPos + 2 * u * easedT * ctrlPos + easedT * easedT * endPos;
+        glowOrb->setPos(currentPos);
+        glowOrb->setScale(1.0 + sin(t * 3.14159) * 0.3);
+
+        // ✨ 喷射星尘
+        for(int i = 0; i < 2; i++) {
+            auto* dot = new QGraphicsEllipseItem(-4, -4, 8, 8);
+            if (type == RewardItemButton::Gold) dot->setBrush(QColor(255, 200, 50, 200));
+            else if (type == RewardItemButton::Relic) dot->setBrush(QColor(100, 220, 255, 200));
+            else dot->setBrush(QColor(220, 100, 255, 200));
+
+            dot->setPen(Qt::NoPen);
+            dot->setPos(currentPos + QPointF((QRandomGenerator::global()->generateDouble()-0.5)*20, (QRandomGenerator::global()->generateDouble()-0.5)*20));
+            fxScene->addItem(dot);
+
+            qreal dx = (QRandomGenerator::global()->generateDouble() - 0.5) * 4;
+            qreal dy = (QRandomGenerator::global()->generateDouble() - 0.5) * 4;
+            trails->append({dot, dx, dy, 0, 10 + QRandomGenerator::global()->bounded(8)});
+        }
+
+        // 💨 拖尾消散
+        for (int i = trails->size() - 1; i >= 0; --i) {
+            auto& tr = (*trails)[i];
+            tr.age++;
+            tr.dot->moveBy(tr.dx, tr.dy);
+            qreal lifeRatio = qreal(tr.age) / tr.life;
+            tr.dot->setOpacity(1.0 - lifeRatio);
+            tr.dot->setScale(1.0 - lifeRatio * 0.5);
+            if (tr.age >= tr.life) {
+                fxScene->removeItem(tr.dot);
+                delete tr.dot;
+                trails->removeAt(i);
+            }
+        }
+
+        // 💥 4. 抵达终点：入账爆点与结算！
+        if (s >= totalSteps) {
+            timer->stop();
+
+            // 爆开一圈火花
+            for(int i = 0; i < 10; i++) {
+                auto* spark = new QGraphicsEllipseItem(-3, -3, 6, 6);
+                spark->setBrush(Qt::white);
+                spark->setPen(Qt::NoPen);
+                spark->setPos(endPos);
+                fxScene->addItem(spark);
+
+                qreal angle = i * (3.14159 * 2 / 10.0);
+                qreal speed = 5.0 + QRandomGenerator::global()->generateDouble() * 3.0;
+                qreal vX = cos(angle) * speed;
+                qreal vY = sin(angle) * speed;
+
+                auto* sparkTimer = new QTimer(fxView);
+                int* sparkAge = new int(0);
+                connect(sparkTimer, &QTimer::timeout, fxView, [=]() {
+                    (*sparkAge)++;
+                    spark->moveBy(vX, vY);
+                    spark->setOpacity(1.0 - (*sparkAge) / 12.0);
+                    if(*sparkAge >= 12) {
+                        sparkTimer->stop();
+                        fxScene->removeItem(spark);
+                        delete spark;
+                        delete sparkAge;
+                        sparkTimer->deleteLater();
+                    }
+                });
+                sparkTimer->start(16);
+            }
+
+            // 彻底清扫流星内存
+            for (auto& tr : *trails) {
+                fxScene->removeItem(tr.dot);
+                delete tr.dot;
+            }
+            delete trails;
+            fxScene->removeItem(glowOrb);
+            delete glowOrb;
+            delete pStep;
+            timer->deleteLater();
+
+            // ========================================================
+            // 📢 发送最终入账信号给司令部 (GameWindow)！
+            // 司令部收到后，UI 就会在爆点的中心瞬间 Q 弹现身！
+            // ========================================================
+            if (type == RewardItemButton::Relic) {
+                emit relicFlightFinished(rId);
+            } else if (type == RewardItemButton::Gold) {
+                emit goldFlightFinished(gAmount);
+            } else if (type == RewardItemButton::Card) {
+                emit deckUpdated();
+            }
+
+            // 延时 0.5 秒销毁临时画布结界，给爆破火花留出播放时间
+            QTimer::singleShot(500, this, [fxView]() {
+                fxView->hide();
+                fxView->deleteLater();
+            });
         }
     });
 
-    flyAnim->start();
+    timer->start(interval);
 }
 
 void RewardScreen::onRewardItemClicked() {

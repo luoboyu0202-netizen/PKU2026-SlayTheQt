@@ -37,22 +37,23 @@ void MapManager::generateMapNodes() {
             node.position = pos;
 
             if (layer == TOTAL_LAYERS - 1) {
-                node.type = "Boss";
+                node.type = NodeType::Boss;
             } else if (layer == 0) {
-                node.type = "Monster";
+                node.type = NodeType::Monster;
             } else if (layer == 7) {
-                node.type = "Campfire";
+                node.type = NodeType::Campfire;
             } else {
                 int randVal = QRandomGenerator::global()->bounded(100);
-                if (randVal < 45) node.type = "Monster";
-                else if (randVal < 70) node.type = "Elite";
+                if (randVal < 45) node.type = NodeType::Monster;
+                else if (randVal < 65) node.type = NodeType::Elite; // 稍微調整機率
+                else if (randVal < 75) node.type = NodeType::Shop;  // 🔴 商店華麗登場！(10%機率)
                 else if (randVal < 85) {
-                    // 将部分商店替换为宝箱或事件
+                    // 將部分機率分給寶箱或事件
                     int r = QRandomGenerator::global()->bounded(100);
-                    if (r < 50) node.type = "Chest";
-                    else node.type = "Event";
+                    if (r < 50) node.type = NodeType::Chest;
+                    else node.type = NodeType::Event;
                 }
-                else node.type = "Campfire";
+                else node.type = NodeType::Campfire;
             }
 
             int canvasWidth = 1280;
@@ -121,20 +122,23 @@ void MapManager::generateMapNodes() {
             QString imagePath;
 
             // 匹配 map_images 文件夹下的对应高清贴图
-            if (node.type == "Boss") {
-                imagePath = ":/resources/images/map_images/elite.png"; // Boss 暂用精英怪图标放大代替
+            // 匹配 map_images 文件夾下的對應高清貼圖
+            if (node.type == NodeType::Boss) {
+                imagePath = ":/resources/images/map_images/elite.png"; // Boss 暫用精英怪圖標放大代替
                 iconWidth = 100;
                 iconHeight = 100;
-            } else if (node.type == "Campfire") {
+            } else if (node.type == NodeType::Campfire) {
                 imagePath = ":/resources/images/map_images/campfire.png";
-            } else if (node.type == "Chest") {
+            } else if (node.type == NodeType::Chest) {
                 imagePath = ":/resources/images/map_images/chest.png";
-            } else if (node.type == "Elite") {
+            } else if (node.type == NodeType::Elite) {
                 imagePath = ":/resources/images/map_images/elite.png";
                 iconWidth = 80;
                 iconHeight = 80;
-            } else if (node.type == "Event") {
+            } else if (node.type == NodeType::Event) {
                 imagePath = ":/resources/images/map_images/event.png";
+            } else if (node.type == NodeType::Shop) {
+                imagePath = ":/resources/images/map_images/merchant.png"; //記得修改！！！
             } else {
                 imagePath = ":/resources/images/map_images/monster.png";
             }

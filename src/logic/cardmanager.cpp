@@ -188,6 +188,14 @@ void CardManager::exhaustCard(Card* card) {
     }
 }
 
+void CardManager::removeCardPermanently(Card* card) {
+    if (!card) return;
+    m_drawPile.removeOne(card);
+    m_hand.removeOne(card);
+    m_discardPile.removeOne(card);
+    m_exhaustPile.removeOne(card);
+}
+
 void CardManager::addCardToDiscardPile(Card* newCard) {
     if (!newCard) return;
     m_discardPile.append(newCard);

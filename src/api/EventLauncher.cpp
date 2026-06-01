@@ -5,6 +5,7 @@
 #include "../ui/events/EventBaseView.h"
 #include "../ui/events/CampfireView.h"
 #include "../ui/events/ChestView.h"
+#include "../ui/events/MerchantView.h"
 #include <QDebug>
 
 EventLauncher::EventLauncher(QObject* parent)
@@ -85,10 +86,19 @@ void EventLauncher::launchCampfire(Player* player, CardManager* cardManager,
 // ============================================================
 void EventLauncher::launchMerchant(Player* player, CardManager* cardManager,
                                     RelicManager* relicManager, const EventContext& context) {
-    Q_UNUSED(player) Q_UNUSED(cardManager) Q_UNUSED(relicManager)
-    qDebug() << "[EventLauncher] Merchant event - view not yet implemented";
-    EventResult result;
-    emitResult(player, cardManager, relicManager, context, result);
+    m_view = new MerchantView(player, cardManager, relicManager);
+
+    connect(m_view, &EventBaseView::eventFinished, this, [this, context]() {
+        EventResult result;
+        result.deckChanged = true;
+        result.goldChanged = true;
+        result.relicsChanged = true;
+        emitResult(m_player, m_cardManager, m_relicManager, context, result);
+        m_view->close();
+        this->deleteLater();
+    });
+
+    m_view->show();
 }
 
 void EventLauncher::launchChest(Player* player, RelicManager* relicManager,

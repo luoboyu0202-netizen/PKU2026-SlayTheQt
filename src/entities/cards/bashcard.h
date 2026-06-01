@@ -4,7 +4,6 @@
 #include "../relics/RelicManager.h"
 #include "../StatusManager.h"
 #include <QDebug> // 记得包含 QDebug 打印日志喵
-#include "logic/battleengine.h"
 
 class BashCard : public Card {
     Q_OBJECT
@@ -37,22 +36,24 @@ public:
     }
 
     void play(Player* source, Fighter* target, RelicManager* relics) override {
-        // 记得获取我们的大管家！
-        BattleEngine* engine = BattleEngine::getInstance();
-        if (!engine || !source || !target) return;
+        if (target) {
+            // 🔴【核心纠错 1】：读取主数值 (m_baseValue) 作为基础伤害！
+            int finalDamage = StatusManager::calculateDamage(source, target, m_baseValue);
 
-        // =======================================================
-        // 🔴【新架构发威】：呼叫大管家，一次性算出带力量、易伤、钢笔尖的真实伤害！
-        // （注意：不再需要手动写 relics->modify... 了，管家全包了！）
-        // =======================================================
-        int finalDamage = engine->calculateSnapshotDamage(source, target, m_baseValue);
+            // 走遗物管道：计算特定遗物的修饰
+            if (relics) {
+                finalDamage = relics->modifyAttackDamage(finalDamage);
+            }
 
-        // 狠狠砸下去！(这里的 takeDamage 已经是个只负责扣血/扣护甲的纯净版了)
-        target->takeDamage(finalDamage);
+            // 狠狠砸下去！
+            target->takeDamage(finalDamage);
 
-        // 施加易伤！
-        if (target->getStatusManager()) {
-            target->getStatusManager()->applyStatus(StatusType::Vulnerable, m_secondaryValue);
+            // =======================================================
+            // 🔴【核心纠错 2】：读取副数值 (m_secondaryValue) 作为易伤层数！
+            // =======================================================
+            if (target->getStatusManager()) {
+                target->getStatusManager()->applyStatus(StatusType::Vulnerable, m_secondaryValue);
+            }
         }
     }
 };

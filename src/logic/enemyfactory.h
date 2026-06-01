@@ -3,6 +3,11 @@
 #include <QStringList>
 #include <QList>
 #include "../entities/Enemy.h"
+// 🔴 极其重要：请在这里引入定义了 NodeType 枚举的头文件！
+// 如果你的 NodeType 定义在 MapManager.h 里，就包含它；
+// 如果你把它抽离到了单独的结构体文件（比如 MapNode.h），请改成对应路径喵！
+#include "map/MapManager.h"
+
 #include <QDebug>
 #include <QRandomGenerator>
 
@@ -10,17 +15,17 @@ class EnemyFactory {
 public:
     // ========================================================
     // 🎭 摇号与统筹车间 (全新对外接口！)
-    // 根据地图传来的节点类型和层数，全自动摇号并生成经过强化的军团！
+    // 🔴 核心升级：参数从 QString 变成了极度安全的 NodeType 枚举！
     // ========================================================
-    static inline QList<Enemy*> createEncounter(const QString& nodeType, int currentLayer) {
+    static inline QList<Enemy*> createEncounter(NodeType nodeType, int currentLayer) {
         QString encounterId;
 
         // 🎲 1. 盲盒摇号逻辑 (Random Pool Selection)
-        if (nodeType == "Boss") {
+        if (nodeType == NodeType::Boss) {
             QStringList bossPool = {"Slime_Boss"}; // 以后可以加入 "The_Guardian", "Hexaghost" 等
             encounterId = bossPool[QRandomGenerator::global()->bounded(bossPool.size())];
         }
-        else if (nodeType == "Elite") {
+        else if (nodeType == NodeType::Elite) {
             QStringList elitePool = {"Gremlin_Nob", "Three_Sentries"}; // 假设有地精大块头和三柱神
             // 兜底：如果你还没写这俩，就强行让它出个狂暴地精群
             encounterId = "Mad_Gremlin_Gang";
@@ -31,7 +36,8 @@ public:
             encounterId = monsterPool[QRandomGenerator::global()->bounded(monsterPool.size())];
         }
 
-        qDebug() << "[EnemyFactory] 🎲 节点类型:" << nodeType << "-> 摇中图纸:" << encounterId;
+        // 🔴 修复打印：强类型枚举需要 static_cast<int> 才能被 qDebug 打印出来喵！
+        qDebug() << "[EnemyFactory] 🎲 节点类型(Enum):" << static_cast<int>(nodeType) << "-> 摇中图纸:" << encounterId;
 
         // 🛠️ 2. 送入造兵车间，按图纸组装肉体
         QList<Enemy*> squad = buildSquad(encounterId);
@@ -51,7 +57,7 @@ public:
 
 public:
     // ========================================================
-    // 🛠️ 造兵车间 (你以前的 createEncounter)
+    // 🛠️ 造兵车间
     // 只负责根据具体的图纸 ID，把怪摆到对应的槽位上
     // ========================================================
     static inline QList<Enemy*> buildSquad(const QString& encounterId) {
@@ -77,7 +83,6 @@ public:
             squad.append(boss);
         }
         else if (encounterId == "Mad_Gremlin_Gang") {
-            // 新增遭遇战图纸：两只疯狂地精
             Enemy* g1 = createEnemy("Mad_Gremlin");
             g1->setSlotIndex(0);
             Enemy* g2 = createEnemy("Mad_Gremlin");
@@ -86,19 +91,17 @@ public:
             squad.append(g2);
         }
         else if (encounterId == "Slime_Boss") {
-            // 假装它是第一层的大 Boss 史莱姆王
             Enemy* bigBoss = createEnemy("Slime_01");
-            bigBoss->setMaxHp(150); // 给点 Boss 专属特权
+            bigBoss->setMaxHp(150);
             bigBoss->setHp(150);
-            bigBoss->setSlotIndex(1); // 坐中间
+            bigBoss->setSlotIndex(1);
             squad.append(bigBoss);
         }
 
         return squad;
     }
-
     // ========================================================
-    // 🧬 细胞车间 (你以前的 createEnemy，保持原样封装成 private)
+    // 🧬 细胞车间
     // ========================================================
     static inline Enemy* createEnemy(const QString& enemyId) {
         if (enemyId == "Slime_01") {

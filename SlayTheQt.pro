@@ -16,8 +16,6 @@ SOURCES += \
     src/entities/enemy.cpp \
     src/entities/fighter.cpp \
     src/entities/player.cpp \
-    src/entities/relics/RelicImplementations.cpp \
-    src/entities/relics/relicmanager.cpp \
     src/entities/statusmanager.cpp \
     src/logic/battleengine.cpp \
     src/logic/cardfactory.cpp \
@@ -43,10 +41,10 @@ SOURCES += \
     src/ui/events/CampfireView.cpp \
     src/ui/events/ChestView.cpp \
     src/ui/events/EventBaseView.cpp \
+    src/ui/events/MerchantView.cpp \
     src/ui/events/IconButton.cpp \
     src/ui/events/LeaveButton.cpp \
     src/ui/events/RelicPopupWidget.cpp \
-    src/ui/events/SelectableCardItem.cpp \
     src/ui/events/TextButton.cpp \
     src/ui/rewardscreen.cpp \
     src/ui/shuffleeffectitem.cpp \
@@ -58,6 +56,7 @@ HEADERS += \
     src/api/BattleAPI.h \
     src/api/EventAPI.h \
     src/api/EventLauncher.h \
+    src/api/GameEnums.h \
     src/api/battlelauncher.h \
     src/entities/cards/BarricadeCard.h \
     src/entities/cards/BloodlettingCard.h \
@@ -123,10 +122,10 @@ HEADERS += \
     src/ui/events/CampfireView.h \
     src/ui/events/ChestView.h \
     src/ui/events/EventBaseView.h \
+    src/ui/events/MerchantView.h \
     src/ui/events/IconButton.h \
     src/ui/events/LeaveButton.h \
     src/ui/events/RelicPopupWidget.h \
-    src/ui/events/SelectableCardItem.h \
     src/ui/events/TextButton.h \
     src/ui/rewardscreen.h \
     src/ui/shuffleeffectitem.h \

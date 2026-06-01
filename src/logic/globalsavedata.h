@@ -16,8 +16,9 @@ public:
     // 主角全局基础属性
     int currentHp = 80;
     int maxHp = 80;
-    int gold = 99;
+    int gold = 999;
     int maxEnergy = 3;
+    int cardRemovalCost = 75;
 
     // 核心安全设计：只存 ID 列表，绝不存实体指针！
     QList<QString> deckIds;
@@ -26,7 +27,8 @@ public:
     // 初始化新游戏的初始状态
     void initNewGame() {
         currentHp = 80;
-        gold = 99;
+        gold = 999;
+        cardRemovalCost = 75;
         deckIds.clear();
         relicIds.clear();
 
@@ -35,6 +37,8 @@ public:
 
         // 初始遗物 ID (参考你 RelicFactory 的可用 ID)
         relicIds.append("relic_burning_blood");
+        relicIds.append("relic_pen_nib");
+
     }
 
     // 🔴【新增】：记忆保险箱，记录 <遗物ID, 计数值>

@@ -76,7 +76,8 @@ BattleView* BattleLauncher::launch(const BattleContext& context) {
             // 🔴 呼叫全局档案，查明玩家现在身上有哪些遗物？
             GlobalSaveData* save = GlobalSaveData::getInstance();
 
-            if (context.nodeType == "Boss") {
+            // 🔴 使用极其丝滑的枚举进行掉落判断！
+            if (context.nodeType == NodeType::Boss) {
                 result.rewardGold = 100;
                 // 🎲 Boss 掉落高级遗物盲盒
                 QString droppedRelic = RelicFactory::generateRandomRelic(save->relicIds);
@@ -84,7 +85,7 @@ BattleView* BattleLauncher::launch(const BattleContext& context) {
                     result.rewardRelicIds.append(droppedRelic);
                 }
             }
-            else if (context.nodeType == "Elite") {
+            else if (context.nodeType == NodeType::Elite) {
                 result.rewardGold = 30;
                 // 🎲 精英怪掉落遗物盲盒
                 QString droppedRelic = RelicFactory::generateRandomRelic(save->relicIds);
@@ -93,7 +94,7 @@ BattleView* BattleLauncher::launch(const BattleContext& context) {
                 }
             }
             else {
-                // 普通怪 (Monster) 通常只掉落金币和卡牌，不掉遗物
+                // 普通怪 (NodeType::Monster 等) 通常只掉落金币和卡牌，不掉遗物
                 result.rewardGold = 15;
             }
         }

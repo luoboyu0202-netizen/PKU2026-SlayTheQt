@@ -8,6 +8,7 @@
 #include "ui/TopBar.h"
 #include "ui/CardBrowserOverlay.h"
 #include "events/CampfireView.h"
+#include "ui/events/MerchantView.h" // 🔴 引入商店系统图纸！
 #include <QScrollArea> // 队友提供：滚动视口
 #include <QScroller>   // 队友提供：触摸拖拽与物理惯性
 
@@ -169,7 +170,7 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
     });
 
     // ========================================================
-    // 🛡️ 顶栏数据与遗物读档唤醒
+    // 🛡️ 顶栏数据与遗物读档唤醒（改为统一管理）
     // ========================================================
     GlobalSaveData* save = GlobalSaveData::getInstance();
     if (m_topBar) {
@@ -179,17 +180,22 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
         m_topBar->refreshDeckCount();
     }
 
-    if (m_globalRelicTray) {
-        for (const QString& relicId : save->relicIds) {
-            Relic* loadedRelic = RelicFactory::createRelic(relicId, this);
-            if (loadedRelic) {
-                if (save->relicCounters.contains(relicId)) {
-                    loadedRelic->setCounter(save->relicCounters[relicId]);
-                }
-                m_globalRelicTray->onNewRelicAdded(loadedRelic);
+    // 🔴 1. 填充全局唯一的遗物指针列表
+    for (const QString& relicId : save->relicIds) {
+        Relic* loadedRelic = RelicFactory::createRelic(relicId, this);
+        if (loadedRelic) {
+            if (save->relicCounters.contains(relicId)) {
+                loadedRelic->setCounter(save->relicCounters[relicId]);
             }
+            m_globalRelics.append(loadedRelic);  // 👈 加入全局列表
         }
     }
+
+    // 🔴 2. 一次性喂给 RelicTray（它会自动创建 UI）
+    if (m_globalRelicTray) {
+        m_globalRelicTray->setRelics(m_globalRelics);
+    }
+
 }
 
 // ==========================================
@@ -224,7 +230,9 @@ void GameWindow::handleStartGameTransition() {
 
 void GameWindow::onMapNodeClicked(const MapNode& node) {
     m_lastClickedNode = node;
-    if (node.type == "Monster" || node.type == "Elite" || node.type == "Boss") {
+
+    // 🔴 使用枚舉進行極速且安全的判斷
+    if (node.type == NodeType::Monster || node.type == NodeType::Elite || node.type == NodeType::Boss) {
         m_curtain->raise();
         m_curtain->show();
         m_fadeAnimation->stop();
@@ -241,7 +249,7 @@ void GameWindow::onMapNodeClicked(const MapNode& node) {
             context.maxEnergy = save->maxEnergy;
 
             for (const QString& id : save->deckIds) context.currentDeck.append(CardFactory::createCard(id, nullptr));
-            for (const QString& id : save->relicIds) context.relics.append(RelicFactory::createRelic(id, nullptr));
+            context.relics = m_globalRelics; // 直接复用全局遗物指针
 
             context.nodeType = node.type;
             context.currentLayer = node.layer;
@@ -270,8 +278,13 @@ void GameWindow::onMapNodeClicked(const MapNode& node) {
         });
 
         m_fadeAnimation->start();
-    } else if (node.type == "Campfire") {
+    }
+    else if (node.type == NodeType::Campfire) {
         enterCampfireEvent();
+    }
+    // 🔴 乾淨俐落的商店跳轉
+    else if (node.type == NodeType::Shop) {
+        enterMerchantEvent();
     }
 }
 
@@ -390,6 +403,94 @@ void GameWindow::enterCampfireEvent() {
             m_curtain->hide();
         });
         m_fadeAnimation->start();
+    });
+
+    m_fadeAnimation->start();
+}
+
+void GameWindow::enterMerchantEvent() {
+    qDebug() << "[GameWindow] 发现商人！准备降下黑幕进入商店...";
+
+    m_curtain->raise();
+    m_curtain->show();
+    m_fadeAnimation->stop();
+    m_fadeAnimation->setStartValue(0.0);
+    m_fadeAnimation->setEndValue(1.0);
+    m_fadeAnimation->disconnect();
+
+    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+
+        // ========================================================
+        // 💰 幕后布置：生成商店场景
+        // ========================================================
+        MerchantView* merchantView = new MerchantView(nullptr, nullptr, nullptr, this);
+        merchantView->setGeometry(-5, -5, 1610, 910);
+
+        merchantView->raise();
+        m_topBarView->raise(); // 🔴 极其关键：顶栏永远压在最上面，实时显示扣款！
+        m_curtain->raise();
+
+        merchantView->show();
+
+        // 📡 通讯天线：监听商店里的消费和删牌动作，让顶栏实时跳字！
+        connect(merchantView, &MerchantView::shopDataChanged, this, [this]() {
+            GlobalSaveData* save = GlobalSaveData::getInstance();
+            m_topBar->updateGold(save->gold);  // 刷新金币
+            m_topBar->refreshDeckCount();      // 刷新卡组数量
+        });
+
+        // 🎬 退场逻辑：拦截商人界面的离开信号，再次降下黑幕！
+        connect(merchantView, &EventBaseView::eventFinished, this, [this, merchantView]() {
+            qDebug() << "[GameWindow] 🛍️ 购物结束，准备降下黑幕返回地图！";
+
+            m_curtain->raise();
+            m_curtain->show();
+            m_fadeAnimation->stop();
+            m_fadeAnimation->setStartValue(0.0);
+            m_fadeAnimation->setEndValue(1.0);
+            m_fadeAnimation->disconnect();
+
+            connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, merchantView]() {
+                // 销毁商店视图
+                merchantView->hide();
+                merchantView->deleteLater();
+
+                // 推进大地图进度
+                m_mapManager->m_currentLayer = m_lastClickedNode.layer;
+                m_mapManager->m_currentNodeId = m_lastClickedNode.id;
+                m_mapManager->m_visitedNodes.append(m_lastClickedNode.id);
+                m_mapManager->refreshNodeStates();
+
+                // 重新揭开幕布，重见大地图
+                m_fadeAnimation->disconnect();
+                m_fadeAnimation->setStartValue(1.0);
+                m_fadeAnimation->setEndValue(0.0);
+                connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+                    m_curtain->hide();
+                });
+                m_fadeAnimation->start();
+            });
+
+            m_fadeAnimation->start();
+        });
+
+        connect(merchantView, &MerchantView::relicBought, this, [this](Relic* relic) {
+            relic->setParent(this);  // 或者 relic->setParent(nullptr); 再自己管理
+            m_globalRelics.append(relic);
+
+            // 2. 刷新顶栏遗物盘
+            m_globalRelicTray->setRelics(m_globalRelics);
+        });
+
+        // 🌟 入场收尾：场景搭建完毕，拉开幕布，正式营业！
+        m_fadeAnimation->disconnect();
+        m_fadeAnimation->setStartValue(1.0);
+        m_fadeAnimation->setEndValue(0.0);
+        connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+            m_curtain->hide();
+        });
+        m_fadeAnimation->start();
+
     });
 
     m_fadeAnimation->start();
