@@ -9,6 +9,7 @@
 #include "ui/CardBrowserOverlay.h"
 #include "events/CampfireView.h"
 #include "ui/events/MerchantView.h" // 🔴 引入商店系统图纸！
+#include "ui/events/ChestView.h"
 #include <QScrollArea> // 队友提供：滚动视口
 #include <QScroller>   // 队友提供：触摸拖拽与物理惯性
 
@@ -285,6 +286,8 @@ void GameWindow::onMapNodeClicked(const MapNode& node) {
     // 🔴 乾淨俐落的商店跳轉
     else if (node.type == NodeType::Shop) {
         enterMerchantEvent();
+    }else if (node.type == NodeType::Chest) {
+        enterChestEvent();
     }
 }
 
@@ -483,6 +486,90 @@ void GameWindow::enterMerchantEvent() {
         });
 
         // 🌟 入场收尾：场景搭建完毕，拉开幕布，正式营业！
+        m_fadeAnimation->disconnect();
+        m_fadeAnimation->setStartValue(1.0);
+        m_fadeAnimation->setEndValue(0.0);
+        connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+            m_curtain->hide();
+        });
+        m_fadeAnimation->start();
+
+    });
+
+    m_fadeAnimation->start();
+}
+
+void GameWindow::enterChestEvent() {
+    qDebug() << "[GameWindow] 发现宝箱！准备降下黑幕进入宝箱房间...";
+
+    m_curtain->raise();
+    m_curtain->show();
+    m_fadeAnimation->stop();
+    m_fadeAnimation->setStartValue(0.0);
+    m_fadeAnimation->setEndValue(1.0);
+    m_fadeAnimation->disconnect();
+
+    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+
+        // ========================================================
+        // 🎁 幕后布置：生成宝箱场景
+        // ========================================================
+        // 注意：如果你 ChestView 的构造函数需要 player 和 relicManager，请填入对应的指针
+        ChestView* chestView = new ChestView(nullptr, nullptr, this);
+        chestView->setGeometry(-5, -5, 1610, 910);
+
+        chestView->raise();
+        m_topBarView->raise(); // 🔴 极其关键：顶栏永远压在最上面，准备迎接流星入账！
+        m_curtain->raise();
+
+        chestView->show();
+
+        // 📡 通讯天线：监听宝箱里获取遗物的动作，存入大名单并刷新顶栏！
+        connect(chestView, &ChestView::relicObtained, this, [this](Relic* relic) {
+            relic->setParent(this);  // 移交内存管理权给 GameWindow
+            m_globalRelics.append(relic);
+
+            // 🌟 刷新顶栏遗物盘，保持和你商人事件一模一样的逻辑！
+            // (如果你的 Tray 有直接添加单件的方法，也可以写 m_globalRelicTray->onNewRelicAdded(relic);)
+            m_globalRelicTray->setRelics(m_globalRelics);
+        });
+
+        // 🎬 退场逻辑：拦截宝箱界面的离开信号，再次降下黑幕！
+        connect(chestView, &EventBaseView::eventFinished, this, [this, chestView]() {
+            qDebug() << "[GameWindow] 🎁 宝箱事件结束，准备降下黑幕返回地图！";
+
+            m_curtain->raise();
+            m_curtain->show();
+            m_fadeAnimation->stop();
+            m_fadeAnimation->setStartValue(0.0);
+            m_fadeAnimation->setEndValue(1.0);
+            m_fadeAnimation->disconnect();
+
+            connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, chestView]() {
+                // 销毁宝箱视图
+                chestView->hide();
+                chestView->deleteLater();
+
+                // 推进大地图进度 (完美复用你写好的地图逻辑)
+                m_mapManager->m_currentLayer = m_lastClickedNode.layer;
+                m_mapManager->m_currentNodeId = m_lastClickedNode.id;
+                m_mapManager->m_visitedNodes.append(m_lastClickedNode.id);
+                m_mapManager->refreshNodeStates();
+
+                // 重新揭开幕布，重见大地图
+                m_fadeAnimation->disconnect();
+                m_fadeAnimation->setStartValue(1.0);
+                m_fadeAnimation->setEndValue(0.0);
+                connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+                    m_curtain->hide();
+                });
+                m_fadeAnimation->start();
+            });
+
+            m_fadeAnimation->start();
+        });
+
+        // 🌟 入场收尾：场景搭建完毕，拉开幕布，宝箱出现在眼前！
         m_fadeAnimation->disconnect();
         m_fadeAnimation->setStartValue(1.0);
         m_fadeAnimation->setEndValue(0.0);

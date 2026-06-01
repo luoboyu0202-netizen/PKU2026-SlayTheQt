@@ -12,6 +12,7 @@
 #include <QDebug>
 #include <cmath>
 #include "logic/GlobalSaveData.h"
+#include <QPropertyAnimation>
 
 ChestView::ChestView(Player* player, RelicManager* relicManager, QWidget* parent)
     : EventBaseView(player, nullptr, relicManager, parent)
@@ -121,80 +122,89 @@ void ChestView::onChestClicked() {
     m_chestOpened = true;
     qDebug() << "[ChestView] Chest clicked!";
 
-    // Clear sparkle particles
+    // 清理粒子
     for (auto* p : m_sparkleParticles) {
         m_scene->removeItem(p);
         delete p;
     }
     m_sparkleParticles.clear();
 
-    // ========================================================
-    // 🔴 适配新版架构：先查户口去重，摇出 ID 后再造肉身！
-    // ========================================================
+    // 智能搖獎
     GlobalSaveData* save = GlobalSaveData::getInstance();
-
-    // 1. 呼叫智能盲盒机，摇出一个玩家绝对没有的遗物 ID
     QString droppedRelicId = RelicFactory::generateRandomRelic(save->relicIds);
 
-    // 2. 检查遗物池是不是被抽干了（全收集玩家防崩溃）
     if (droppedRelicId.isEmpty()) {
-        qDebug() << "[ChestView] ⚠️ 警告：遗物池已空！发放安慰奖。";
-        // 💡 可以在这里给 m_offeredRelic 赋值一个特定的“头环”遗物，或者干脆给点金币
+        showResult();
         return;
     }
 
-    // 3. 拿到 ID 后，正式召唤实体！
     m_offeredRelic = RelicFactory::createRelic(droppedRelicId, this);
 
-    if (!m_offeredRelic) {
-        qDebug() << "[ChestView] ERROR: RelicFactory returned null for ID:" << droppedRelicId;
-        return;
-    }
-    qDebug() << "[ChestView] Generated relic:" << m_offeredRelic->getName();
-    // ========================================================
-
-    // Swap to open chest image
+    // 🌟 寶箱 Q 彈換圖 (使用 QVariantAnimation 解決 Error 1)
     if (!m_chestOpenPixmap.isNull()) {
         m_chestItem->setPixmap(m_chestOpenPixmap.scaled(700, 700, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    }
-    qDebug() << "[ChestView] Chest image swapped, scheduling popup...";
+        m_chestItem->setTransformOriginPoint(m_chestItem->boundingRect().center());
 
-    // Show relic popup after brief delay
-    QTimer::singleShot(500, this, [this]() {
-        qDebug() << "[ChestView] Creating RelicPopupWidget...";
+        QVariantAnimation* popAnim = new QVariantAnimation(this);
+        popAnim->setDuration(400);
+        popAnim->setStartValue(1.0);
+        popAnim->setKeyValueAt(0.4, 1.15); // 膨脹
+        popAnim->setEndValue(1.0);
+        popAnim->setEasingCurve(QEasingCurve::OutBack);
+        connect(popAnim, &QVariantAnimation::valueChanged, this, [this](const QVariant& v){
+            m_chestItem->setScale(v.toReal());
+        });
+        popAnim->start(QAbstractAnimation::DeleteWhenStopped);
+    }
+
+    // 🌟 延遲 400ms 等寶箱彈完，再優雅地召喚隊友的選擇 UI！
+    QTimer::singleShot(400, this, [this]() {
         m_relicPopup = new RelicPopupWidget(m_offeredRelic, m_scene, this);
 
         connect(m_relicPopup, &RelicPopupWidget::takeClicked, this, [this]() {
-            qDebug() << "[ChestView] Player chose to take relic";
             onTakeRelic(m_offeredRelic);
         });
         connect(m_relicPopup, &RelicPopupWidget::skipClicked, this, [this]() {
-            qDebug() << "[ChestView] Player chose to skip relic";
             onSkipRelic();
         });
-
-        qDebug() << "[ChestView] RelicPopupWidget created and connected.";
     });
 }
 
 void ChestView::onTakeRelic(Relic* relic) {
+    // 🔴 修正 Error 2：不要呼叫 hide()，直接 delete，隊友的解構子會自動清空畫面！
     if (m_relicPopup) {
         delete m_relicPopup;
         m_relicPopup = nullptr;
     }
-    m_relicManager->addRelic(relic);
-    showResult();
+
+    // 1. 寫入存檔
+    GlobalSaveData::getInstance()->relicIds.append(relic->getId());
+
+    // 2. 觸發流星 (從寶箱口飛出)
+    QPointF startPos = m_chestItem->sceneBoundingRect().center();
+    startPos.setY(startPos.y() - 150);
+    playFlightEffect(relic, startPos); // 👈 這裡呼叫我們上一回合寫好的特效函數
+
+    // 3. 延遲發貨
+    QTimer::singleShot(800, this, [this, relic]() {
+        emit relicObtained(relic);
+        showResult();
+    });
 }
 
 void ChestView::onSkipRelic() {
+    // 直接銷毀 UI
     if (m_relicPopup) {
         delete m_relicPopup;
         m_relicPopup = nullptr;
     }
+    // 玩家不要這個遺物，無情銷毀它的肉身！
     if (m_offeredRelic) {
         delete m_offeredRelic;
         m_offeredRelic = nullptr;
     }
+
+    // 顯示離開按鈕
     showResult();
 }
 
@@ -204,4 +214,137 @@ void ChestView::showResult() {
         m_leaveBtn->setText("");
         m_leaveBtn->show();
     }
+}
+
+void ChestView::playFlightEffect(Relic* relic, const QPointF& startPos) {
+    // 建立跨次元結界
+    QGraphicsView* fxView = new QGraphicsView(this->window());
+    fxView->resize(this->window()->size());
+    fxView->setStyleSheet("background: transparent; border: none;");
+    fxView->setAttribute(Qt::WA_TransparentForMouseEvents);
+    fxView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    fxView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    QGraphicsScene* fxScene = new QGraphicsScene(0, 0, fxView->width(), fxView->height(), fxView);
+    fxView->setScene(fxScene);
+    fxView->show();
+    fxView->raise();
+
+    // 計算精準落點
+    GlobalSaveData* save = GlobalSaveData::getInstance();
+    int currentIndex = save->relicIds.size() - 1; // 抵銷提早入帳的偏移量
+    if (currentIndex < 0) currentIndex = 0;
+
+    QPointF endPos(10 + currentIndex * (48 + 8) + 24, 55 + 24);
+
+    // 轉換坐標系
+    QPoint viewPos = this->mapFromScene(startPos);
+    QPointF absoluteStartPos = this->mapTo(this->window(), viewPos);
+
+    QPointF ctrlPos(absoluteStartPos.x() + (endPos.x() - absoluteStartPos.x()) * 0.4, absoluteStartPos.y() - 350);
+
+    const int totalSteps = 50;
+    const int interval = 16;
+
+    // 繪製高能光球
+    auto* glowOrb = new QGraphicsEllipseItem(-25, -25, 50, 50);
+    QRadialGradient gradient(0, 0, 25);
+    gradient.setColorAt(0.0, QColor(255, 255, 255, 255));
+    gradient.setColorAt(0.3, QColor(50, 200, 255, 255)); // 遺物專屬幽藍
+    gradient.setColorAt(1.0, QColor(0, 100, 255, 0));
+    glowOrb->setBrush(gradient);
+    glowOrb->setPen(Qt::NoPen);
+    glowOrb->setPos(absoluteStartPos);
+
+    auto* blur = new QGraphicsBlurEffect();
+    blur->setBlurRadius(10);
+    glowOrb->setGraphicsEffect(blur);
+    fxScene->addItem(glowOrb);
+
+    struct TrailParticle { QGraphicsEllipseItem* dot; qreal dx, dy; int age; int life; };
+    auto* trails = new QList<TrailParticle>();
+    int* pStep = new int(0);
+    auto* timer = new QTimer(this);
+
+    connect(timer, &QTimer::timeout, this, [=]() {
+        (*pStep)++;
+        int s = *pStep;
+        qreal t = qreal(s) / totalSteps;
+        qreal easedT = t * t * (3 - 2 * t);
+        qreal u = 1.0 - easedT;
+        QPointF currentPos = u * u * absoluteStartPos + 2 * u * easedT * ctrlPos + easedT * easedT * endPos;
+        glowOrb->setPos(currentPos);
+        glowOrb->setScale(1.0 + sin(t * 3.14159) * 0.3);
+
+        for(int i = 0; i < 2; i++) {
+            auto* dot = new QGraphicsEllipseItem(-4, -4, 8, 8);
+            dot->setBrush(QColor(100, 220, 255, 200));
+            dot->setPen(Qt::NoPen);
+            dot->setPos(currentPos + QPointF((QRandomGenerator::global()->generateDouble()-0.5)*20, (QRandomGenerator::global()->generateDouble()-0.5)*20));
+            fxScene->addItem(dot);
+
+            qreal dx = (QRandomGenerator::global()->generateDouble() - 0.5) * 4;
+            qreal dy = (QRandomGenerator::global()->generateDouble() - 0.5) * 4;
+            trails->append({dot, dx, dy, 0, 10 + QRandomGenerator::global()->bounded(8)});
+        }
+
+        for (int i = trails->size() - 1; i >= 0; --i) {
+            auto& tr = (*trails)[i];
+            tr.age++;
+            tr.dot->moveBy(tr.dx, tr.dy);
+            qreal lifeRatio = qreal(tr.age) / tr.life;
+            tr.dot->setOpacity(1.0 - lifeRatio);
+            tr.dot->setScale(1.0 - lifeRatio * 0.5);
+            if (tr.age >= tr.life) {
+                fxScene->removeItem(tr.dot);
+                delete tr.dot;
+                trails->removeAt(i);
+            }
+        }
+
+        if (s >= totalSteps) {
+            timer->stop();
+            for(int i = 0; i < 10; i++) {
+                auto* spark = new QGraphicsEllipseItem(-3, -3, 6, 6);
+                spark->setBrush(Qt::white);
+                spark->setPen(Qt::NoPen);
+                spark->setPos(endPos);
+                fxScene->addItem(spark);
+
+                qreal angle = i * (3.14159 * 2 / 10.0);
+                qreal speed = 5.0 + QRandomGenerator::global()->generateDouble() * 3.0;
+                qreal vX = cos(angle) * speed;
+                qreal vY = sin(angle) * speed;
+
+                auto* sparkTimer = new QTimer(fxView);
+                int* sparkAge = new int(0);
+                connect(sparkTimer, &QTimer::timeout, fxView, [=]() {
+                    (*sparkAge)++;
+                    spark->moveBy(vX, vY);
+                    spark->setOpacity(1.0 - (*sparkAge) / 12.0);
+                    if(*sparkAge >= 12) {
+                        sparkTimer->stop();
+                        fxScene->removeItem(spark);
+                        delete spark;
+                        delete sparkAge;
+                        sparkTimer->deleteLater();
+                    }
+                });
+                sparkTimer->start(16);
+            }
+
+            for (auto& tr : *trails) { fxScene->removeItem(tr.dot); delete tr.dot; }
+            delete trails;
+            fxScene->removeItem(glowOrb);
+            delete glowOrb;
+            delete pStep;
+            timer->deleteLater();
+
+            QTimer::singleShot(500, fxView, [fxView]() {
+                fxView->hide();
+                fxView->deleteLater();
+            });
+        }
+    });
+    timer->start(interval);
 }

@@ -31,4 +31,9 @@ private:
     RelicPopupWidget* m_relicPopup = nullptr;
     Relic* m_offeredRelic = nullptr;
     bool m_chestOpened = false;
+    void playFlightEffect(Relic* relic, const QPointF& startPos);
+
+signals:
+    // 🔴 新增信號：通知 GameWindow 寶箱發放了遺物，趕緊讓頂欄顯示！
+    void relicObtained(Relic* relic);
 };
