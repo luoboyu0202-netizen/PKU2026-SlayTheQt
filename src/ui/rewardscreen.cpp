@@ -200,13 +200,33 @@ void RewardScreen::loadRewards(const BattleResult& result) {
 
     // 🃏 3. 卡牌奖励
     if (result.hasCardReward) {
-        RewardItemButton* cardBtn = new RewardItemButton(RewardItemButton::Card, "  增加一张卡牌到你的牌组");
+        // 🌟 第一份：常规的卡牌奖励（所有人都有）
+        RewardItemButton* cardBtn1 = new RewardItemButton(RewardItemButton::Card, "  增加一张卡牌到你的牌组");
+        cardBtn1->setIcon(QIcon(":/resources/images/ui/card_reward_icon.png"));
+        connect(cardBtn1, &QPushButton::clicked, this, &RewardScreen::onRewardItemClicked);
+        m_listLayout->addWidget(cardBtn1);
 
-        // 🔴 设置卡牌的真实图标！(可以用一张卡背图，或者精美的卡组图标)
-        cardBtn->setIcon(QIcon(":/resources/images/ui/card_reward_icon.png"));
+        // ========================================================
+        // 📿 念珠手镯特判：发第二份卡牌奖励！
+        // ========================================================
+        GlobalSaveData* save = GlobalSaveData::getInstance();
 
-        connect(cardBtn, &QPushButton::clicked, this, &RewardScreen::onRewardItemClicked);
-        m_listLayout->addWidget(cardBtn);
+        // 查户口：看看全局存档里有没有念珠手镯
+        if (save->relicIds.contains("relic_prayer_wheel")) {
+
+            // 💡 严谨原版设定：如果是精英怪或 Boss，其实是不触发念珠手镯的。
+            // 如果你的 BattleResult 里存了打的是什么怪 (比如 result.nodeType == NodeType::Monster)
+            // 你可以把条件改成: if (result.nodeType == NodeType::Monster && save->relicIds.contains("relic_prayer_wheel"))
+
+            qDebug() << "[RewardScreen] 📿 念珠手镯发威，追加第二份卡牌奖励！";
+
+            RewardItemButton* cardBtn2 = new RewardItemButton(RewardItemButton::Card, "  增加一张卡牌到你的牌组");
+            // 故意在文字上做点微小区分（可选），或者保持一模一样
+            // cardBtn2->setText("  增加一张卡牌到你的牌组 (念珠手镯)");
+            cardBtn2->setIcon(QIcon(":/resources/images/ui/card_reward_icon.png"));
+            connect(cardBtn2, &QPushButton::clicked, this, &RewardScreen::onRewardItemClicked);
+            m_listLayout->addWidget(cardBtn2);
+        }
     }
 }
 
@@ -236,6 +256,7 @@ void RewardScreen::animateAndRemoveItem(RewardItemButton* btn) {
         // 🔴 极其聪明的位置预判：计算它将要落入 RelicTray 的哪个槽位
         int currentRelicIndex = save->relicIds.size();
         if (currentRelicIndex < 0) currentRelicIndex = 0;
+        save->relicIds.append(rId);
         int trayStartX = 10;
         int trayStartY = 55;
         int spacing = 8;

@@ -194,7 +194,7 @@ void MerchantView::setupPhaseTwo() {
     if (!armPix.isNull()) {
         m_handCursor->setPixmap(armPix.scaled(255, 750, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     }
-    m_handCursor->setZValue(120);
+    m_handCursor->setZValue(250);
     m_handCursor->setPos(-200, -500);
     m_scene->addItem(m_handCursor);
     setMouseTracking(true);
@@ -361,7 +361,7 @@ void MerchantView::showRelicTooltip(int index) {
     m_relicTooltipBg->setRect(0, 0, w, h);
     m_relicTooltipBg->setBrush(QColor(30, 30, 35, 240));
     m_relicTooltipBg->setPen(QPen(QColor(180, 150, 100), 2));
-    m_relicTooltipBg->setZValue(160);
+    m_relicTooltipBg->setZValue(260);
 
     m_relicTooltipText->setPos(10, 10);
 
@@ -529,7 +529,7 @@ void MerchantView::layoutShopItems() {
     const qreal cardSpacingX = kShopCardW + kShopCardGap;
 
     const qreal relicStartX = startX1 + 2 * cardSpacingX + 60;
-    const qreal relicSpacing = 140, relicY = row2Y - 10;
+    const qreal relicSpacing = 180, relicY = row2Y - 10;
     const qreal serviceX = relicStartX + 3 * relicSpacing + 60;
     const qreal serviceY = row2Y - kShopCardH / 2.0;
     const qreal removePriceX = serviceX + kShopCardH / 2 - 35;
@@ -570,33 +570,44 @@ void MerchantView::layoutShopItems() {
     }
 
     for (int i = 0; i < 3 && m_shopRelics[i]; ++i) {
-        // ========================================================
-        // 🔴 极其优雅：一行代码复用我们的完美遗物类！彻底消灭画圆圈！
-        // ========================================================
         m_relicIcons[i] = new RelicItem(m_shopRelics[i]);
 
-        // RelicItem 默认是 48x48，为了在商店货架上更显眼，咱们把它放大 1.25 倍
-        m_relicIcons[i]->setScale(1.25);
+        // ========================================================
+        // 🔴 视觉升级 1：遗物图标巨物化！(从 1.25 倍暴力拉升到 2.0 倍！)
+        // ========================================================
+        qreal relicScale = 2.0;
+        m_relicIcons[i]->setScale(relicScale);
         m_relicIcons[i]->setPos(relicStartX + i * relicSpacing, relicY);
         m_relicIcons[i]->setZValue(10);
         m_scene->addItem(m_relicIcons[i]);
 
+        // 🧠 魔法算术：获取放大后图标的真实物理宽度，用于后续文本的绝对居中！
+        qreal actualIconWidth = m_relicIcons[i]->boundingRect().width() * relicScale;
+
+        // ========================================================
+        // 🔴 视觉升级 2：价格标签大字号化！(字号 12 -> 18)
+        // ========================================================
         m_relicPriceTexts[i] = m_scene->addText(
             QString::number(m_relicPrices[i]) + "g",
-            QFont("Microsoft YaHei", 12, QFont::Bold));
+            QFont("Microsoft YaHei", 18, QFont::Bold));
         m_relicPriceTexts[i]->setDefaultTextColor(QColor(255, 215, 0));
 
-        qreal px = relicStartX + i * relicSpacing + 32 - m_relicPriceTexts[i]->boundingRect().width() / 2;
-        m_relicPriceTexts[i]->setPos(px, relicY + 70);
+        // 🎯 动态绝对居中：图标左上角 X + 图标一半宽 - 文本一半宽
+        qreal px = relicStartX + i * relicSpacing + (actualIconWidth / 2.0) - (m_relicPriceTexts[i]->boundingRect().width() / 2.0);
+        // Y轴动态下移：图标顶端 Y + 图标总高度 + 留白 10 像素
+        m_relicPriceTexts[i]->setPos(px, relicY + actualIconWidth + 10);
         m_relicPriceTexts[i]->setZValue(10);
 
+        // ========================================================
+        // 🔴 视觉升级 3：遗物名字大字号化！(字号 9 -> 14)
+        // ========================================================
         m_relicNameTexts[i] = m_scene->addText(
             m_shopRelics[i]->getName(),
-            QFont("Microsoft YaHei", 9));
+            QFont("Microsoft YaHei", 14));
         m_relicNameTexts[i]->setDefaultTextColor(QColor(200, 200, 200));
 
-        qreal nx = relicStartX + i * relicSpacing + 32 - m_relicNameTexts[i]->boundingRect().width() / 2;
-        m_relicNameTexts[i]->setPos(nx, relicY + 95);
+        qreal nx = relicStartX + i * relicSpacing + (actualIconWidth / 2.0) - (m_relicNameTexts[i]->boundingRect().width() / 2.0);
+        m_relicNameTexts[i]->setPos(nx, relicY + actualIconWidth + 40);
         m_relicNameTexts[i]->setZValue(10);
     }
 
@@ -712,10 +723,15 @@ void MerchantView::onRelicClicked(int index) {
     Relic* purchasedRelic = m_shopRelics[index];
     RelicItem* icon = m_relicIcons[index];
 
+    // ========================================================
+    // 🔴 核心修复区：购买瞬间，不仅要缩回手，还要强制销毁词条！
+    // ========================================================
     if (icon == m_currentHoveredItem) {
         m_currentHoveredItem = nullptr;
         moveHandOffScreen();
+        hideRelicTooltip(); // ✨ 加上这句净化咒语！彻底消灭幽灵词条！
     }
+
     m_relicIcons[index] = nullptr; // 斷開連結
 
     // 2. 起飛！
@@ -1041,8 +1057,11 @@ void MerchantView::confirmRemoval(Card* card) {
         // 🔴 核心修复：既然都卖光了，底下的价签也必须赶紧藏起来喵！
         // ========================================================
         if (m_removePriceText) m_removePriceText->hide();
-        QPixmap soldoutPix = loadPixmap(":/resources/images/events/Merchant/soldout.jpeg",
-                                        "resources/images/events/Merchant/soldout.jpeg");
+
+        // 🌟 破案关键：把名字和后缀严格改成和 .qrc 里一模一样的！
+        QPixmap soldoutPix = loadPixmap(":/resources/images/events/Merchant/soldout-removebg-preview.png",
+                                        "resources/images/events/Merchant/soldout-removebg-preview.png");
+
         if (!soldoutPix.isNull()) {
             soldoutPix = trimTransparentPadding(soldoutPix);
             m_soldoutItem = new QGraphicsPixmapItem();
@@ -1050,6 +1069,9 @@ void MerchantView::confirmRemoval(Card* card) {
             m_soldoutItem->setPos(m_removeButton->pos());
             m_soldoutItem->setZValue(10);
             m_scene->addItem(m_soldoutItem);
+        } else {
+            // 加一个保底报错，万一没出来控制台会告诉你！
+            qDebug() << "[MerchantView] ❌ 售罄图片加载失败！请再次核对 qrc 路径！";
         }
     }
     m_cardRemoved = true;

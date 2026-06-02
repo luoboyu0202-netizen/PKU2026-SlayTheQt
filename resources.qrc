@@ -94,5 +94,13 @@
         <file>resources/images/map_images/merchant.png</file>
         <file>resources/images/events/Chest/Skip.png</file>
         <file>resources/images/events/Chest/Chest.png</file>
+        <file>resources/images/relics/relic_happy_flower.png</file>
+        <file>resources/images/relics/relic_ice_cream.png</file>
+        <file>resources/images/relics/relic_lantern.png</file>
+        <file>resources/images/relics/relic_mercury_hourglass.png</file>
+        <file>resources/images/relics/relic_prayer_wheel.png</file>
+        <file>resources/images/relics/relic_shuriken.png</file>
+        <file>resources/images/relics/relic_smooth_stone.png</file>
+        <file>resources/images/relics/relic_torii.png</file>
     </qresource>
 </RCC>
