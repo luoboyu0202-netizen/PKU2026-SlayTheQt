@@ -1,6 +1,8 @@
 #include "Fighter.h"
 #include <algorithm>
 #include <QDebug> // 记得引入 QDebug
+#include "../logic/BattleEngine.h" // 🔴 必须引入战斗引擎，用来顺藤摸瓜找到遗物
+#include "../entities/relics/RelicManager.h" // 确保能调用遗物管理器
 
 Fighter::Fighter(const QString& name, int maxHp, QObject* parent)
     : QObject(parent), m_name(name), m_hp(maxHp), m_maxHp(maxHp), m_block(0), m_isDead(false) {
@@ -22,8 +24,20 @@ void Fighter::takeDamage(int amount) {
         emit blockChanged(m_block);
     }
 
-    // 剩余伤害扣除血量
+    // ========================================================
+    // ⛩️ 鸟居结界拦截点：剩余伤害扣除血量前
+    // ========================================================
     if (amount > 0) {
+        // 判定当前挨打的是不是玩家主角
+        if (dynamic_cast<Player*>(this)) {
+            BattleEngine* engine = BattleEngine::getInstance();
+            if (engine) {
+                // 🔴 直接呼叫我们刚刚在引擎里架设的代理插座
+                amount = engine->modifyIncomingDamage(amount);
+            }
+        }
+
+        // 剩余血量扣除核心判定
         m_hp -= amount;
         if (m_hp <= 0) {
             m_hp = 0;

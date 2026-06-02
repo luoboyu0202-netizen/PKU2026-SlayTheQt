@@ -50,6 +50,7 @@ void BigFishView::onBoxChosen() {
         // 2. 拿着新 ID，去呼叫真正的实体制造机！
         Relic* r = RelicFactory::createRelic(relicId, this);
         if (r) {
+            save->relicIds.append(relicId);
             m_relicManager->addRelic(r); // 放进沙盒，等 GameWindow 监听
         }
     }

@@ -289,17 +289,22 @@ void CampfireView::createRestSmoke() {
     auto* rng = QRandomGenerator::global();
     const QPointF fireCenter(1380, 880);
 
-    auto makeSmoke = [this, rng, fireCenter](qreal minDist, qreal maxDist) {
+    // 🌟 新增了一个 delay 参数，让烟雾错峰涌出
+    auto makeSmoke = [this, rng, fireCenter](qreal minDist, qreal maxDist, int delay) {
         qreal angle = rng->bounded(360) * M_PI / 180.0;
         qreal dist = minDist + rng->bounded(maxDist - minDist);
         qreal tx = fireCenter.x() + cos(angle) * dist;
-        qreal ty = fireCenter.y() + sin(angle) * dist - rng->bounded(100);
+        // 🔴 让 Y 轴的偏移量偏向负数（向上），营造热气上升感
+        qreal ty = fireCenter.y() + sin(angle) * dist - rng->bounded(250);
 
-        const qreal size = 60 + rng->bounded(120);
-        auto* smoke = new QGraphicsEllipseItem(-size / 2, -size / 2, size, size, nullptr);
-        smoke->setBrush(QColor(220, 215, 205, 180));
+        const qreal size = 80 + rng->bounded(150);
+
+        // 🔴 魔法 1：不用正圆，用稍微压扁的椭圆！这样旋转时才会有“翻滚”的视觉差！
+        auto* smoke = new QGraphicsEllipseItem(-size / 2, -size * 0.4, size, size * 0.8, nullptr);
+        smoke->setBrush(QColor(230, 225, 215, 180));
         smoke->setPen(Qt::NoPen);
         smoke->setPos(fireCenter);
+        smoke->setRotation(rng->bounded(360)); // 随机初始角度
         smoke->setZValue(105);
         m_scene->addItem(smoke);
 
@@ -307,23 +312,33 @@ void CampfireView::createRestSmoke() {
         opacityEff->setOpacity(0.0);
         smoke->setGraphicsEffect(opacityEff);
 
-        QPointF drift(tx + rng->bounded(200) - 100, ty + rng->bounded(150) - 75);
+        // 进一步强调向上漂浮
+        QPointF drift(tx + rng->bounded(200) - 100, ty - rng->bounded(150));
+        QPointF endPoint(drift.x() + rng->bounded(300) - 150, drift.y() - 400 - rng->bounded(300));
 
         auto* pathAnim = new QVariantAnimation(this);
         pathAnim->setDuration(4000 + rng->bounded(2000));
         pathAnim->setStartValue(QPointF(fireCenter));
         pathAnim->setKeyValueAt(0.3, drift);
-        pathAnim->setKeyValueAt(1.0, QPointF(drift.x() + rng->bounded(300) - 150,
-                                             drift.y() - 400 - rng->bounded(200)));
+        pathAnim->setKeyValueAt(1.0, endPoint);
         pathAnim->setEasingCurve(QEasingCurve::OutCubic);
         connect(pathAnim, &QVariantAnimation::valueChanged, this, [smoke](const QVariant& v) {
             smoke->setPos(v.toPointF());
         });
 
+        // 🔴 魔法 2：烟雾翻滚动画
+        auto* rotAnim = new QVariantAnimation(this);
+        rotAnim->setDuration(pathAnim->duration());
+        rotAnim->setStartValue(smoke->rotation());
+        rotAnim->setEndValue(smoke->rotation() + rng->bounded(180) - 90); // 缓慢自转
+        connect(rotAnim, &QVariantAnimation::valueChanged, this, [smoke](const QVariant& v) {
+            smoke->setRotation(v.toReal());
+        });
+
         auto* opacityAnim = new QVariantAnimation(this);
         opacityAnim->setDuration(pathAnim->duration());
         opacityAnim->setKeyValueAt(0.0, 0.0);
-        opacityAnim->setKeyValueAt(0.15, 0.7);
+        opacityAnim->setKeyValueAt(0.15, 0.8); // 稍微提亮一点
         opacityAnim->setKeyValueAt(0.6, 0.5);
         opacityAnim->setKeyValueAt(1.0, 0.0);
         connect(opacityAnim, &QVariantAnimation::valueChanged, this, [opacityEff](const QVariant& v) {
@@ -332,8 +347,8 @@ void CampfireView::createRestSmoke() {
 
         auto* scaleAnim = new QVariantAnimation(this);
         scaleAnim->setDuration(pathAnim->duration());
-        scaleAnim->setStartValue(0.3);
-        scaleAnim->setEndValue(2.5 + rng->bounded(100) / 100.0);
+        scaleAnim->setStartValue(0.2);
+        scaleAnim->setEndValue(3.0 + rng->bounded(150) / 100.0); // 膨胀得更大
         scaleAnim->setEasingCurve(QEasingCurve::OutCubic);
         connect(scaleAnim, &QVariantAnimation::valueChanged, this, [smoke](const QVariant& v) {
             smoke->setScale(v.toReal());
@@ -341,20 +356,29 @@ void CampfireView::createRestSmoke() {
 
         auto* group = new QParallelAnimationGroup(this);
         group->addAnimation(pathAnim);
+        group->addAnimation(rotAnim); // 加入翻滚
         group->addAnimation(opacityAnim);
         group->addAnimation(scaleAnim);
         connect(group, &QAbstractAnimation::finished, this, [smoke]() { delete smoke; });
-        group->start(QAbstractAnimation::DeleteWhenStopped);
+
+        // 🔴 魔法 3：錯峰出行！根据传入的 delay 延迟发射，制造绵绵不断的雾气感！
+        QTimer::singleShot(delay, this, [group]() {
+            group->start(QAbstractAnimation::DeleteWhenStopped);
+        });
     };
 
-    for (int i = 0; i < 20; ++i)  makeSmoke(100, 300);
-    for (int i = 0; i < 40; ++i)  makeSmoke(300, 800);
-    for (int i = 0; i < 60; ++i)  makeSmoke(800, 1600);
+    // 爆发性产生大量烟雾，赋予 0~800 毫秒的不等延迟
+    for (int i = 0; i < 20; ++i)  makeSmoke(100, 300, rng->bounded(200));
+    for (int i = 0; i < 40; ++i)  makeSmoke(300, 800, 150 + rng->bounded(400));
+    for (int i = 0; i < 60; ++i)  makeSmoke(800, 1800, 300 + rng->bounded(500));
 
-    auto* veil = new QGraphicsRectItem(0, 0, 1920, 1080);
+    // ========================================================
+    // 🔴 致命修复：遮天蔽日的物理黑幕！直接铺满 4000x3000！
+    // ========================================================
+    auto* veil = new QGraphicsRectItem(-1000, -1000, 4000, 3000);
     veil->setBrush(QColor(230, 225, 215));
     veil->setPen(Qt::NoPen);
-    veil->setZValue(300);
+    veil->setZValue(300); // 确保遮住角色和状态栏
     m_scene->addItem(veil);
 
     auto* veilOpacity = new QGraphicsOpacityEffect();
@@ -364,8 +388,8 @@ void CampfireView::createRestSmoke() {
     auto* veilAnim = new QVariantAnimation(this);
     veilAnim->setDuration(6000);
     veilAnim->setKeyValueAt(0.0, 0.0);
-    veilAnim->setKeyValueAt(0.2, 0.85);
-    veilAnim->setKeyValueAt(0.5, 0.85);
+    veilAnim->setKeyValueAt(0.2, 0.95); // 稍微再浓厚一点
+    veilAnim->setKeyValueAt(0.5, 0.95);
     veilAnim->setKeyValueAt(1.0, 0.0);
     connect(veilAnim, &QVariantAnimation::valueChanged, this, [veilOpacity](const QVariant& v) {
         veilOpacity->setOpacity(v.toReal());

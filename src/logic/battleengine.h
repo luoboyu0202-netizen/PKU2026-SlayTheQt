@@ -22,6 +22,9 @@ public:
     void setBackgroundPath(const QString& path) { m_backgroundPath = path; }
     QString getBackgroundPath() const { return m_backgroundPath; }
 
+    // 🔴 标记当前是否是战斗的第一个回合
+    bool m_isFirstTurn = true;
+
     // ========================================================
     // 🔴【时停魔法 2.0】：支持任意数量、任意提示语的终极接口！
     // ========================================================
@@ -89,6 +92,14 @@ public:
     const QList<Enemy*>& getEnemies() const { return m_enemies; }
     CardManager* getCardManager() const { return m_cardManager; }
     RelicManager* m_relicManager; // 🔴【存入大脑皮层】
+
+    int modifyIncomingDamage(int baseDamage) {
+        if (m_relicManager) {
+            // 顺藤摸瓜，调用 RelicManager 内部的逻辑
+            return m_relicManager->modifyIncomingDamage(baseDamage);
+        }
+        return baseDamage;
+    }
 
     int calculateFinalDamage(Fighter* attacker, Fighter* defender, int baseDamage);
 

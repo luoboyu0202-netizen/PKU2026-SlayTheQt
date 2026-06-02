@@ -115,11 +115,13 @@ void BattleEngine::refreshEnemyIntent() {
 
 void BattleEngine::startBattle() {
     qDebug() << "[Engine] Battle Started!";
+    m_isFirstTurn = true; // 🔴 每次新战斗开始，重置为第一回合！
+
     if (m_relicManager) {
         for (Relic* r : m_relicManager->getRelics()) {
             if (r) {
-                // 🔴 极其关键：必须把 m_player 传进去！否则蛇眼不认识主角是谁！
                 r->onBattleStart(m_player);
+                r->onBattleStart();
             }
         }
     }
@@ -130,15 +132,46 @@ void BattleEngine::startPlayerTurn() {
     qDebug() << "[Engine] --- Player Turn Started ---";
 
     // ========================================================
-    // 🛡️【壁垒法则判定】：如果身上没有壁垒状态，才会清空上一回合的护甲！
+    // 🛡️【壁垒与首回合判定】：
+    // 如果不是第一回合，并且身上没有壁垒状态，才会清空上一回合的护甲！
     // ========================================================
-    if (m_player->getStatusManager()->getStatus(StatusType::Barricade) <= 0) {
+    if (!m_isFirstTurn && m_player->getStatusManager()->getStatus(StatusType::Barricade) <= 0) {
         m_player->loseBlock();
+    } else if (m_isFirstTurn) {
+        qDebug() << "[Engine] 第一回合开始！完美保留锚等遗物开局赋予的初始护甲！";
     } else {
-        qDebug() << "[Engine] 壁垒生效！上一回合残存的" << m_player->getBlock() << "点格挡被完美保留了下来喵！";
+        qDebug() << "[Engine] 壁垒生效！上一回合残存的护甲被完美保留了下来喵！";
     }
 
-    m_player->resetEnergy();// 回合开始回满费用
+    // ========================================================
+    // 🍦【冰淇淋结界】：能量不再于回合结束时清空！
+    // ========================================================
+    if (m_relicManager && m_relicManager->hasRelic("relic_ice_cream")) {
+        // 🔴 触发冰淇淋：不覆盖重置！
+        // 保留当前没用完的能量，并且叠加这一回合本该给的基础能量（MaxEnergy）！
+        qDebug() << "[Engine] 🍦 冰淇淋发威！保留上回合剩余能量，追加" << m_player->getMaxEnergy() << "点基础能量喵！";
+
+        m_player->addEnergy(m_player->getMaxEnergy());
+
+        // （可选）触发全局遗物发光动画，你可以根据需要补充遗物发光信号
+    } else {
+        // 🔴 没有冰淇淋：老老实实执行原版逻辑，清空旧能量，重置回满！
+        m_player->resetEnergy();
+    }
+
+    // ========================================================
+    // 🔥【时序钩子：回合开始（Start of Turn）】
+    // ========================================================
+
+    // 🔴 救命补丁 1：大声告诉所有遗物，新回合开始了！
+    // 没有这段广播，手里剑不会清零，开心小花不会计数！
+    if (m_relicManager) {
+        for (Relic* r : m_relicManager->getRelics()) {
+            if (r) {
+                r->onTurnStart(); // 🥷 手里剑会在这里把计数器清 0，🌻 小花会在这里计数！
+            }
+        }
+    }
 
     // ========================================================
     // 🔥【时序钩子：回合开始（Start of Turn）】

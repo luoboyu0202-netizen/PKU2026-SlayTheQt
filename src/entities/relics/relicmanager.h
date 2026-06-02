@@ -47,6 +47,26 @@ public:
         return finalBlock;
     }
 
+    int modifyIncomingDamage(int damage) {
+        // 假设你用来存放遗物的列表叫 m_relics (如果是其他名字，比如 relics，请替换一下喵)
+        for (Relic* relic : m_relics) {
+            if (relic) {
+                // 让每个遗物都有机会去拦截和修改这个伤害
+                damage = relic->modifyIncomingDamage(damage);
+            }
+        }
+        return damage; // 返回被遗物层层修改后的最终伤害！
+    }
+
+    bool hasRelic(const QString& relicId) const {
+        for (Relic* relic : m_relics) {
+            if (relic && relic->getId() == relicId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     const QList<Relic*>& getRelics() const { return m_relics; }
 
 signals:

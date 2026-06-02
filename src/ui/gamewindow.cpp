@@ -126,12 +126,14 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
     // 🎁 接收飞行抵达信号，更新底层 UI 与全局存档！
     // =======================================================
     connect(m_rewardScreen, &RewardScreen::relicFlightFinished, this, [this](QString relicId) {
-        GlobalSaveData::getInstance()->relicIds.append(relicId);
-        Relic* newRelic = RelicFactory::createRelic(relicId, this);
-        m_globalRelicTray->onNewRelicAdded(newRelic);
+        // 🟢 1. 既然 RewardScreen 已经在起飞时把名字写进户口本了，我们直接呼叫万能刷新！
+        refreshTopBarRelics();
 
+        // 🟢 2. 如果当前还在战斗状态（比如精英怪战利品还没退回地图），
+        // 顺手给战斗沙盒也塞个克隆体，保证它立刻生效
         if (m_currentBattleView && m_currentBattleView->getEngine()) {
-            m_currentBattleView->getEngine()->m_relicManager->addRelic(newRelic);
+            Relic* combatClone = RelicFactory::createRelic(relicId, this);
+            m_currentBattleView->getEngine()->m_relicManager->addRelic(combatClone);
         }
     });
 
@@ -174,7 +176,6 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
             topScene->setSceneRect(0, 0, 1600, 110);
         });
     });
-
     // ========================================================
     // 🛡️ 顶栏数据与遗物读档唤醒（改为统一管理）
     // ========================================================
@@ -186,21 +187,8 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
         m_topBar->refreshDeckCount();
     }
 
-    // 🔴 1. 填充全局唯一的遗物指针列表
-    for (const QString& relicId : save->relicIds) {
-        Relic* loadedRelic = RelicFactory::createRelic(relicId, this);
-        if (loadedRelic) {
-            if (save->relicCounters.contains(relicId)) {
-                loadedRelic->setCounter(save->relicCounters[relicId]);
-            }
-            m_globalRelics.append(loadedRelic);  // 👈 加入全局列表
-        }
-    }
-
-    // 🔴 2. 一次性喂给 RelicTray（它会自动创建 UI）
-    if (m_globalRelicTray) {
-        m_globalRelicTray->setRelics(m_globalRelics);
-    }
+    // 🔴 呼叫万能大招！初始化顶栏遗物！
+    refreshTopBarRelics();
 
 }
 
@@ -1058,4 +1046,26 @@ void GameWindow::playGlobalParticleEffect(QPointF startPos, QPointF endPos, cons
         }
     });
     timer->start(interval);
+}
+
+// 在 GameWindow 中新增这个函数
+void GameWindow::refreshTopBarRelics() {
+    GlobalSaveData* save = GlobalSaveData::getInstance();
+
+    // 1. 清空旧面子账（注意内存安全，把旧图标都删掉）
+    for (Relic* r : m_globalRelics) {
+        r->deleteLater();
+    }
+    m_globalRelics.clear();
+
+    // 2. 严格按照“天道户口本”，重新生成一模一样的克隆体！
+    for (const QString& id : save->relicIds) {
+        Relic* clonedRelic = RelicFactory::createRelic(id, this);
+        if (clonedRelic) {
+            m_globalRelics.append(clonedRelic);
+        }
+    }
+
+    // 3. 把这份绝对正确、不会有任何遗漏的名单交给托盘！
+    m_globalRelicTray->setRelics(m_globalRelics);
 }

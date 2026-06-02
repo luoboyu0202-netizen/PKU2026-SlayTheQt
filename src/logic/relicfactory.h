@@ -18,13 +18,11 @@ public:
     // ========================================================
     static QList<QString> getAllAvailableRelicIds() {
         return {
-            "relic_pen_nib",       // 钢笔尖
-            "relic_snecko_eye",    // 异蛇之眼
-            "relic_vajra",         // 金刚杵 (+1 力量)
-            "relic_anchor",        // 船锚 (第一回合加格挡)
-            "relic_burning_blood", // 燃烧之血 (战斗结束回血)
-            "relic_bag_of_preparation",
-            "relic_orichalcum",
+            "relic_pen_nib", "relic_orichalcum", "relic_bag_of_preparation",
+            "relic_anchor", "relic_burning_blood", "relic_vajra", "relic_snecko_eye",
+            "relic_lantern", "relic_happy_flower", "relic_shuriken",
+            "relic_smooth_stone", "relic_mercury_hourglass",
+            "relic_torii", "relic_prayer_wheel", "relic_ice_cream"
             // 以后你每写一个新遗物，就往这里加一行喵！
         };
     }

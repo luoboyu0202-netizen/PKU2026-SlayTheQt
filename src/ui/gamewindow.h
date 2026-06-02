@@ -21,6 +21,9 @@ class GameWindow : public QWidget {
 public:
     explicit GameWindow(QWidget *parent = nullptr);
 
+    // 在 GameWindow 中新增这个函数
+    void refreshTopBarRelics();
+
     // 全域粒子流星大砲！
     // type: "Relic" (藍色), "Card" (紫色), "Gold" (金色)
     void playGlobalParticleEffect(QPointF startPos, QPointF endPos, const QString& type, std::function<void()> onLanded);

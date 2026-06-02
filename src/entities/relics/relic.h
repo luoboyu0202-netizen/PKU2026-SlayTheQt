@@ -52,6 +52,10 @@ public:
     // 5. 当回合结束时触发（例如：水银沙漏）
     virtual void onTurnEnd() {}
 
+    virtual void onTurnStart() {}
+
+    virtual int modifyIncomingDamage(int damage) { return damage; }
+
 signals:
     void counterChanged(int newCount);
     void relicActivated(); // 触发时的闪烁信号
