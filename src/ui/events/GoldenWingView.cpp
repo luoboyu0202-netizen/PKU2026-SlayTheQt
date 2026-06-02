@@ -6,8 +6,9 @@
 #include <QDebug>
 #include <QRandomGenerator>
 #include <QRegularExpression>
+#include <QTimer> // 🔴 必须引入 QTimer 以支持异步渲染！
 
-GoldenWingView::GoldenWingView(Player* player, CardManager* cardManager, 
+GoldenWingView::GoldenWingView(Player* player, CardManager* cardManager,
                                RelicManager* relicManager, QWidget* parent)
     : GenericChoiceEventView(player, cardManager, relicManager, parent)
 {
@@ -15,6 +16,11 @@ GoldenWingView::GoldenWingView(Player* player, CardManager* cardManager,
 }
 
 void GoldenWingView::setupContent() {
+    // ========================================================
+    // 🔴 修复 1：在最开头执行大扫除，杜绝重复调用时选项翻倍！
+    // ========================================================
+    clearOptions();
+
     GenericChoiceEventView::setupContent();
 
     setTitle("翅膀雕像");
@@ -26,25 +32,8 @@ void GoldenWingView::setupContent() {
     QString prayText = QString("[祈祷] 从你的牌组中移除一张牌。失去 %1 生命。").arg(PRAY_HP_LOSS);
     addOption(prayText, [this]() { onPrayChosen(); }, canPray);
 
-    // 选项2: 摧毁 (需要 10 攻以上的牌)
-    bool hasStrongAttack = false;
-    QList<Card*> allCards;
-    allCards << m_cardManager->getDrawPile() << m_cardManager->getHand() << m_cardManager->getDiscardPile();
-    for (Card* c : allCards) {
-        // 在该项目中，m_baseValue 对于 Attack 类型代表伤害
-        // 我们假设逻辑正确，具体取决于 Card 子类的初始化
-        if (c->getType() == CardType::Attack && c->getDynamicDescription(m_player).contains(QRegularExpression("\\d+"))) {
-             // 这里的 10 攻判定比较 tricky，因为 getDynamicDescription 返回的是富文本
-             // 简单起见，我们暂且认为基础攻击力满足即可。
-             // 由于 Card 没有暴露 m_baseValue 的 Getter，我们通过 getDynamicDescription 的数值提取（模拟）
-             // 实际开发中应该在 Card 类加个 getBaseValue()。
-             // 此处先用一个宽泛逻辑，或者假设玩家一定有打击+ (升级后通常能到 9-10)
-             hasStrongAttack = true; // 占位逻辑：默认允许，或者你可以补充 getBaseValue 接口
-             break;
-        }
-    }
-    // 强制修正：由于目前没有 getBaseValue，我们只要有攻击牌就允许摧毁，或者你要求我实现 getBaseValue
-    hasStrongAttack = true; 
+    // 选项2: 摧毁 (由于项目中暂时没有 getBaseValue()，默认允许摧毁)
+    bool hasStrongAttack = true;
 
     QString destroyText = "[摧毁] 获得 50-80 金币。";
     addOption(destroyText, [this]() { onDestroyChosen(); }, hasStrongAttack);
@@ -54,7 +43,7 @@ void GoldenWingView::setupContent() {
 }
 
 void GoldenWingView::onPrayChosen() {
-    // 🔴 修正：点击选项时不扣血，推迟到 confirmRemoval
+    // 🔴 点击选项时不扣血，推迟到 confirmRemoval
     startCardRemoval();
 }
 
@@ -72,78 +61,119 @@ void GoldenWingView::startCardRemoval() {
     showDarkOverlay("");
     setOptionsEnabled(false);
 
-    QList<Card*> removable;
-    removable.append(m_cardManager->getDrawPile());
-    removable.append(m_cardManager->getHand());
-    removable.append(m_cardManager->getDiscardPile());
+    // ========================================================
+    // 🔴 修复 2：异步渲染结界！让出主线程 50 毫秒，拒绝卡牌抢跑！
+    // ========================================================
+    QTimer::singleShot(50, this, [this]() {
+        QList<Card*> removable;
+        removable.append(m_cardManager->getDrawPile());
+        removable.append(m_cardManager->getHand());
+        removable.append(m_cardManager->getDiscardPile());
 
-    const int cols = 5;
-    const qreal cardW = 150, cardH = 220;
-    const qreal startX = 260, startY = 250; 
-    
-    for (int i = 0; i < removable.size(); ++i) {
-        auto* item = new CardItem(removable[i]);
-        item->setSelectionEnabled(true);
-        int col = i % cols;
-        int row = i / cols;
-        QPointF targetPos(startX + col * (cardW + 20), startY + row * (cardH + 20));
-        item->setPos(targetPos);
-        item->setHomeState(targetPos, 0.0);
-        item->setZValue(200); 
-        m_scene->addItem(item);
-        m_removalCardItems.append(item);
-
-        connect(item, &CardItem::cardClicked, this, [this, item](CardItem*) {
-            for (auto* other : m_removalCardItems)
-                other->setHighlighted(false);
-            item->setHighlighted(true);
-            if (m_confirmBtn) m_confirmBtn->show();
-        });
-    }
-
-    m_confirmBtn = new TextButton("确认移除", 200, 55);
-    m_confirmBtn->setPos(960 - 120, 900);
-    m_confirmBtn->setZValue(200);
-    m_confirmBtn->hide();
-    m_scene->addItem(m_confirmBtn);
-    connect(m_confirmBtn, &TextButton::clicked, this, [this]() {
-        Card* selected = nullptr;
-        for (auto* item : m_removalCardItems) {
-            if (item->isHighlighted()) { selected = item->getLogicCard(); break; }
+        if (removable.isEmpty()) {
+            hideDarkOverlay();
+            setOptionsEnabled(true); // 如果没牌可删，直接恢复选项
+            return;
         }
-        if (selected) confirmRemoval(selected);
-    });
 
-    m_cancelBtn = new TextButton("返回", 200, 55);
-    m_cancelBtn->setPos(960 + 120, 900);
-    m_cancelBtn->setZValue(200);
-    m_scene->addItem(m_cancelBtn);
-    connect(m_cancelBtn, &TextButton::clicked, this, &GoldenWingView::cancelRemoval);
+        const int cols = 5;
+        const qreal cardW = 150, cardH = 220;
+        const qreal startX = 260, startY = 250;
+
+        for (int i = 0; i < removable.size(); ++i) {
+            auto* item = new CardItem(removable[i]);
+            item->setSelectionEnabled(true);
+            int col = i % cols;
+            int row = i / cols;
+            QPointF targetPos(startX + col * (cardW + 20), startY + row * (cardH + 20));
+            item->setPos(targetPos);
+            item->setHomeState(targetPos, 0.0);
+            item->setZValue(200);
+            m_scene->addItem(item);
+            m_removalCardItems.append(item);
+
+            connect(item, &CardItem::cardClicked, this, [this, item](CardItem*) {
+                for (auto* other : m_removalCardItems)
+                    other->setHighlighted(false);
+                item->setHighlighted(true);
+                if (m_confirmBtn) m_confirmBtn->show();
+            });
+        }
+
+        m_confirmBtn = new TextButton("确认移除", 200, 55);
+        m_confirmBtn->setPos(960 - 120, 900);
+        m_confirmBtn->setZValue(200);
+        m_confirmBtn->hide();
+        m_scene->addItem(m_confirmBtn);
+        connect(m_confirmBtn, &TextButton::clicked, this, [this]() {
+            Card* selected = nullptr;
+            for (auto* item : m_removalCardItems) {
+                if (item->isHighlighted()) { selected = item->getLogicCard(); break; }
+            }
+            if (selected) confirmRemoval(selected);
+        });
+
+        m_cancelBtn = new TextButton("返回", 200, 55);
+        m_cancelBtn->setPos(960 + 120, 900);
+        m_cancelBtn->setZValue(200);
+        m_scene->addItem(m_cancelBtn);
+        connect(m_cancelBtn, &TextButton::clicked, this, &GoldenWingView::cancelRemoval);
+    });
 }
 
 void GoldenWingView::confirmRemoval(Card* card) {
-    m_player->setHp(m_player->getHp() - PRAY_HP_LOSS); // 🔴 真正确认后再扣血
-    m_cardManager->removeCardPermanently(card);
-    
-    for (auto* item : m_removalCardItems) { m_scene->removeItem(item); delete item; }
+    // ========================================================
+    // 🔴 修复 3：救命步骤，先清理 UI 切断联系，再处理底层逻辑！
+    // ========================================================
+    for (auto* item : m_removalCardItems) {
+        m_scene->removeItem(item);
+        item->deleteLater(); // 绝对不要用 delete
+    }
     m_removalCardItems.clear();
-    if (m_confirmBtn) { m_scene->removeItem(m_confirmBtn); delete m_confirmBtn; m_confirmBtn = nullptr; }
-    if (m_cancelBtn) { m_scene->removeItem(m_cancelBtn); delete m_cancelBtn; m_cancelBtn = nullptr; }
+
+    if (m_confirmBtn) {
+        m_scene->removeItem(m_confirmBtn);
+        m_confirmBtn->deleteLater();
+        m_confirmBtn = nullptr;
+    }
+    if (m_cancelBtn) {
+        m_scene->removeItem(m_cancelBtn);
+        m_cancelBtn->deleteLater();
+        m_cancelBtn = nullptr;
+    }
 
     hideDarkOverlay();
     setOptionsEnabled(true);
+
+    // UI 彻底剥离后，执行底层的杀牌和扣血动作
+    m_player->setHp(m_player->getHp() - PRAY_HP_LOSS); // 真正确认后再扣血
+    m_cardManager->removeCardPermanently(card);
+
     showEnding("你曾听人提起过一个崇拜巨大鸟类的邪教。当你跪下祷告的时候，你开始觉得有一些头晕……\n过了一会儿，你醒了过来，感觉脚步有点变轻了。");
 }
 
 void GoldenWingView::cancelRemoval() {
-    for (auto* item : m_removalCardItems) { m_scene->removeItem(item); delete item; }
+    // 🔴 同上，优雅地超度 UI
+    for (auto* item : m_removalCardItems) {
+        m_scene->removeItem(item);
+        item->deleteLater();
+    }
     m_removalCardItems.clear();
-    if (m_confirmBtn) { m_scene->removeItem(m_confirmBtn); delete m_confirmBtn; m_confirmBtn = nullptr; }
-    if (m_cancelBtn) { m_scene->removeItem(m_cancelBtn); delete m_cancelBtn; m_cancelBtn = nullptr; }
+
+    if (m_confirmBtn) {
+        m_scene->removeItem(m_confirmBtn);
+        m_confirmBtn->deleteLater();
+        m_confirmBtn = nullptr;
+    }
+    if (m_cancelBtn) {
+        m_scene->removeItem(m_cancelBtn);
+        m_cancelBtn->deleteLater();
+        m_cancelBtn = nullptr;
+    }
 
     hideDarkOverlay();
     setOptionsEnabled(true);
-    // 🔴 修正：不再调用 setupContent()，原本的选项只是被禁用了，重新启用即可，避免重复添加
+    // 🔴 不再调用 setupContent()，避免选项翻倍和重叠！
 }
 
 void GoldenWingView::showEnding(const QString& resultText) {

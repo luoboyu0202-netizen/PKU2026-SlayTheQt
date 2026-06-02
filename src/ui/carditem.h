@@ -59,6 +59,10 @@ public:
     int price() const { return m_price; }
     void setOnSale(bool onSale) { m_isOnSale = onSale; update(); }
     void setAffordable(bool canAfford) { m_isAffordable = canAfford; update(); }
+    void setBaseScale(qreal scale) {
+        m_baseScale = scale;
+        setScale(scale); // 设置基准时立刻生效
+    }
 
 
 signals:
@@ -66,6 +70,7 @@ signals:
     void cardVisualDestroyed(CardItem* item);
     // 选择模式下点击卡牌
     void cardClicked(CardItem* item);
+
 
 protected:
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
@@ -89,6 +94,7 @@ private:
     bool m_isDisplayOnly = false;
     bool m_isGhost = false;
     qreal m_defaultZ = 10.0; // 默认层级
+    qreal m_baseScale = 1.0;
 
     // 营火/商店状态开关
     bool m_isSelectionEnabled = false;

@@ -19,6 +19,7 @@ SelfNoteView::SelfNoteView(Player* player, CardManager* cardManager,
 }
 
 void SelfNoteView::setupContent() {
+    clearOptions();
     GenericChoiceEventView::setupContent();
 
     setTitle("留给自己的讯息");
@@ -56,10 +57,14 @@ void SelfNoteView::startCardSelection() {
     showDarkOverlay("");
     setOptionsEnabled(false);
 
-    QList<Card*> removable;
-    removable.append(m_cardManager->getDrawPile());
-    removable.append(m_cardManager->getHand());
-    removable.append(m_cardManager->getDiscardPile());
+    // ========================================================
+    // 🔴 同样的异步渲染魔法
+    // ========================================================
+    QTimer::singleShot(50, this, [this]() {
+        QList<Card*> removable;
+        removable.append(m_cardManager->getDrawPile());
+        removable.append(m_cardManager->getHand());
+        removable.append(m_cardManager->getDiscardPile());
 
     const int cols = 5;
     const qreal cardW = 150, cardH = 220;
@@ -103,6 +108,7 @@ void SelfNoteView::startCardSelection() {
     m_cancelBtn->setZValue(200);
     m_scene->addItem(m_cancelBtn);
     connect(m_cancelBtn, &TextButton::clicked, this, &SelfNoteView::cancelSelection);
+    });
 }
 
 void SelfNoteView::confirmStorage(Card* card) {
@@ -133,7 +139,6 @@ void SelfNoteView::cancelSelection() {
 
     hideDarkOverlay();
     setOptionsEnabled(true);
-    setupContent();
 }
 
 void SelfNoteView::showEnding(const QString& resultText) {

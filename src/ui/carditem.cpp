@@ -78,7 +78,7 @@ void CardItem::animateToHome() {
     // ========================================================
     QPropertyAnimation* scaleAnim = new QPropertyAnimation(this, "scale");
     scaleAnim->setDuration(200);
-    scaleAnim->setEndValue(1.0);
+    scaleAnim->setEndValue(m_baseScale);
     scaleAnim->setEasingCurve(QEasingCurve::OutQuad);
     scaleAnim->start(QAbstractAnimation::DeleteWhenStopped);
 }
@@ -293,7 +293,7 @@ void CardItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
         }
         setZValue(200);
         QPropertyAnimation* scaleAnim = new QPropertyAnimation(this, "scale");
-        scaleAnim->setEndValue(1.5);
+        scaleAnim->setEndValue(m_baseScale * 1.5);
         scaleAnim->setDuration(150);
         scaleAnim->start(QAbstractAnimation::DeleteWhenStopped);
         return;
@@ -327,7 +327,7 @@ void CardItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
 
     QPropertyAnimation* scaleAnim = new QPropertyAnimation(this, "scale");
     scaleAnim->setDuration(150);
-    scaleAnim->setEndValue(1.25);
+    scaleAnim->setEndValue(m_baseScale * 1.25);
     scaleAnim->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
@@ -338,7 +338,7 @@ void CardItem::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
         m_isHovered = false;
         setZValue(m_defaultZ); // 绝对不再硬编码 160，完美适配所有场景！
         QPropertyAnimation* scaleAnim = new QPropertyAnimation(this, "scale");
-        scaleAnim->setEndValue(1.0);
+        scaleAnim->setEndValue(m_baseScale);
         scaleAnim->setDuration(150);
         scaleAnim->start(QAbstractAnimation::DeleteWhenStopped);
         return;
@@ -366,7 +366,7 @@ void CardItem::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
 
     QPropertyAnimation* scaleAnim = new QPropertyAnimation(this, "scale");
     scaleAnim->setDuration(150);
-    scaleAnim->setEndValue(1.0);
+    scaleAnim->setEndValue(m_baseScale);
     scaleAnim->start(QAbstractAnimation::DeleteWhenStopped);
 
     animateToHome();
@@ -556,7 +556,7 @@ void CardItem::mouseReleaseEvent(QGraphicsSceneMouseEvent* event) {
             m_currentTargetedEnemy = nullptr;
             update();
         } else {
-            if (event->scenePos().y() < 750.0) {
+            if (event->scenePos().y() < 820.0) {
                 qDebug() << "[UI] Polish Area Play Success!";
                 emit cardPlayedRequest(m_logicCard, nullptr);
             } else {
@@ -607,7 +607,7 @@ void CardItem::animateSuspendInCenter() {
     anim->setEasingCurve(QEasingCurve::OutBack);
     anim->start(QAbstractAnimation::DeleteWhenStopped);
 
-    setScale(1.2);
+    setScale(m_baseScale * 1.2);
 }
 
 void CardItem::animateTrueExhaust() {

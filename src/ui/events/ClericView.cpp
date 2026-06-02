@@ -13,6 +13,7 @@ ClericView::ClericView(Player* player, CardManager* cardManager,
 }
 
 void ClericView::setupContent() {
+    clearOptions();
     GenericChoiceEventView::setupContent();
 
     setTitle("牧师");
@@ -48,19 +49,23 @@ void ClericView::onPurifyChosen() {
 }
 
 void ClericView::startCardRemoval() {
-    showDarkOverlay(""); // 🔴 移除提示文字，保持纯净
-    setOptionsEnabled(false); // 🔴 禁用底层所有事件按钮
-    
-    QList<Card*> removable;
-    removable.append(m_cardManager->getDrawPile());
-    removable.append(m_cardManager->getHand());
-    removable.append(m_cardManager->getDiscardPile());
+    showDarkOverlay("");
+    setOptionsEnabled(false);
 
-    if (removable.isEmpty()) {
-        hideDarkOverlay();
-        showEnding("你身上似乎没有什么可以净化的东西……");
-        return;
-    }
+    // ========================================================
+    // 🔴 魔法：让出主线程 50 毫秒！先渲染黑幕，再印制卡牌！
+    // ========================================================
+    QTimer::singleShot(50, this, [this]() {
+        QList<Card*> removable;
+        removable.append(m_cardManager->getDrawPile());
+        removable.append(m_cardManager->getHand());
+        removable.append(m_cardManager->getDiscardPile());
+
+        if (removable.isEmpty()) {
+            hideDarkOverlay();
+            showEnding("你身上似乎没有什么可以净化的东西……");
+            return;
+        }
 
     const int cols = 5;
     const qreal cardW = 150, cardH = 220;
@@ -106,6 +111,7 @@ void ClericView::startCardRemoval() {
     m_cancelRemoveBtn->setZValue(200);
     m_scene->addItem(m_cancelRemoveBtn);
     connect(m_cancelRemoveBtn, &TextButton::clicked, this, &ClericView::cancelRemoval);
+    });
 }
 
 void ClericView::confirmRemoval(Card* card) {
@@ -166,8 +172,6 @@ void ClericView::cancelRemoval() {
     }
 
     hideDarkOverlay();
-    // 恢復原本的選項，注意：此處錢沒有被扣！
-    setupContent();
 }
 
 void ClericView::onLeaveChosen() {

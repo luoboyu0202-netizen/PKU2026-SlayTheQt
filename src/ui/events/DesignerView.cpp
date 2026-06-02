@@ -13,6 +13,7 @@ DesignerView::DesignerView(Player* player, CardManager* cardManager,
 }
 
 void DesignerView::setupContent() {
+    clearOptions();
     GenericChoiceEventView::setupContent();
 
     setTitle("尖端设计师");
@@ -84,19 +85,23 @@ void DesignerView::onPunchChosen() {
 }
 
 void DesignerView::startCardRemoval(std::function<void(Card*)> onConfirmed) {
-    showDarkOverlay(""); 
-    setOptionsEnabled(false); 
-    
-    QList<Card*> removable;
-    removable.append(m_cardManager->getDrawPile());
-    removable.append(m_cardManager->getHand());
-    removable.append(m_cardManager->getDiscardPile());
+    showDarkOverlay("");
+    setOptionsEnabled(false);
 
-    if (removable.isEmpty()) {
-        hideDarkOverlay();
-        setOptionsEnabled(true);
-        return;
-    }
+    // ========================================================
+    // 🔴 注意：除了 this，还要捕获 onConfirmed 回调函数！
+    // ========================================================
+    QTimer::singleShot(50, this, [this, onConfirmed]() {
+        QList<Card*> removable;
+        removable.append(m_cardManager->getDrawPile());
+        removable.append(m_cardManager->getHand());
+        removable.append(m_cardManager->getDiscardPile());
+
+        if (removable.isEmpty()) {
+            hideDarkOverlay();
+            setOptionsEnabled(true);
+            return;
+        }
 
     const int cols = 5;
     const qreal cardW = 150, cardH = 220;
@@ -164,6 +169,7 @@ void DesignerView::startCardRemoval(std::function<void(Card*)> onConfirmed) {
     m_cancelRemoveBtn->setZValue(200);
     m_scene->addItem(m_cancelRemoveBtn);
     connect(m_cancelRemoveBtn, &TextButton::clicked, this, &DesignerView::cancelRemoval);
+    });
 }
 
 void DesignerView::cancelRemoval() {
@@ -187,7 +193,6 @@ void DesignerView::cancelRemoval() {
 
     hideDarkOverlay();
     setOptionsEnabled(true);
-    setupContent(); // 恢復選項，且保證玩家沒有被白白扣錢
 }
 
 void DesignerView::showEnding(const QString& resultText) {
