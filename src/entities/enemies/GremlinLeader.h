@@ -1,6 +1,7 @@
 #pragma once
 #include "../../entities/Enemy.h"
 #include <QRandomGenerator>
+#include "../../logic/BattleEngine.h" // 🔴 必须引入天眼引擎！(请根据你的实际路径微调喵)
 
 class GremlinLeader : public Enemy {
     Q_OBJECT
@@ -9,48 +10,77 @@ private:
 
 public:
     explicit GremlinLeader(QObject* parent = nullptr)
-        : Enemy("地精头子", 140, ":/resources/images/enemies/gremlin_leader.png", parent) {
+        : Enemy("地精头子", 50, ":/resources/images/enemies/gremlin_leader.png", parent) {
         setId("Gremlin_Leader");
-
-        // 🔴 大哥必须有排面，直接放大 1.5 倍！
-        setScaleFactor(1.5);
+        setScaleFactor(1.5); // 大哥的排面！
     }
 
     void rollNextIntent() override {
-        // 首回合必定召唤小弟护驾！
+        // ========================================================
+        // 📡 战场雷达：扫描全场，到底还有几个活着的小弟？
+        // ========================================================
+        int aliveMinions = 0;
+        if (BattleEngine* engine = BattleEngine::getInstance()) {
+            for (Enemy* e : engine->getEnemies()) {
+                // 如果这个实体存在、没死，且【不是老大自己】！
+                if (e && !e->isDead() && e != this) {
+                    aliveMinions++;
+                }
+            }
+        }
+
+        // 首回合必定召唤小弟护驾！（无视场上人数）
         if (m_moveHistory[0] == -1) {
             setIntent(Move::RALLY, Intent(IntentType::Summon, 2, StatusType::None, 0, "", "Random_Gremlin"));
             return;
         }
 
+        // 🎲 启动摇号机
         int roll = QRandomGenerator::global()->bounded(100);
 
-        // 🐾 33% 概率：鼓舞 (全员加 3 力量) - 不能连放
-        if (roll < 33 && !lastMoveWas(Move::ENCOURAGE)) {
-            // GroupBuff 意图：参数2是层数，参数3是状态类型
-            setIntent(Move::ENCOURAGE, Intent(IntentType::GroupBuff, 3, StatusType::Strength));
+        // ========================================================
+        // 🧠 进阶领袖 AI：根据场上人数，动态切换战斗风格！
+        // ========================================================
+        if (aliveMinions >= 3) {
+            // 🔴【满员状态】：坑位满了（场上最多4怪），绝对不摇人！
+            // 战术切换：50% 概率疯狂强化，50% 概率带头冲锋！
+            if (roll < 50 && !lastMoveWas(Move::ENCOURAGE)) {
+                setIntent(Move::ENCOURAGE, Intent(IntentType::GroupBuff, 3, StatusType::Strength));
+            } else if (!lastMoveWas(Move::STAB)) {
+                setIntent(Move::STAB, Intent(IntentType::Attack, 6, StatusType::None, 0, "", "", 3));
+            } else {
+                rollNextIntent(); // 兜底重摇
+            }
         }
-        // 🐾 33% 概率：集结 (召唤 2 只随机小地精) - 不能连放
-        else if (roll < 66 && !lastMoveWas(Move::RALLY)) {
-            // 🔴 核心魔法：召唤的目标填入 "Random_Gremlin"！
-            setIntent(Move::RALLY, Intent(IntentType::Summon, 2, StatusType::None, 0, "", "Random_Gremlin"));
-        }
-        // 🐾 34% 概率：连环刺击 (6 伤害 x 3 段) - 不能连放
-        else if (!lastMoveWas(Move::STAB)) {
-            // Attack 意图，最后一个参数是 multiHitCount (多段攻击次数)
-            setIntent(Move::STAB, Intent(IntentType::Attack, 6, StatusType::None, 0, "", "", 3));
+        else if (aliveMinions == 0) {
+            // 🔴【光杆司令状态】：小弟死光了！放群体 Buff 毫无意义！
+            // 战术切换：75% 极大概率摇人，25% 概率气急败坏捅玩家！
+            if (roll < 75 && !lastMoveWas(Move::RALLY)) {
+                setIntent(Move::RALLY, Intent(IntentType::Summon, 2, StatusType::None, 0, "", "Random_Gremlin"));
+            } else if (!lastMoveWas(Move::STAB)) {
+                setIntent(Move::STAB, Intent(IntentType::Attack, 6, StatusType::None, 0, "", "", 3));
+            } else {
+                rollNextIntent(); // 兜底重摇
+            }
         }
         else {
-            // 兜底重摇
-            rollNextIntent();
+            // 🟢【正常状态】：场上有 1~2 只小弟，按经典的三分天下逻辑运转！
+            if (roll < 33 && !lastMoveWas(Move::ENCOURAGE)) {
+                setIntent(Move::ENCOURAGE, Intent(IntentType::GroupBuff, 3, StatusType::Strength));
+            } else if (roll < 66 && !lastMoveWas(Move::RALLY)) {
+                setIntent(Move::RALLY, Intent(IntentType::Summon, 2, StatusType::None, 0, "", "Random_Gremlin"));
+            } else if (!lastMoveWas(Move::STAB)) {
+                setIntent(Move::STAB, Intent(IntentType::Attack, 6, StatusType::None, 0, "", "", 3));
+            } else {
+                rollNextIntent(); // 兜底重摇
+            }
         }
     }
 
 private:
-    // 帮助函数：设定意图并同步写入大脑记忆
     void setIntent(int moveId, Intent intent) {
         m_currentIntent = intent;
         recordMove(moveId);
-        Enemy::rollNextIntent(); // 🔴 算完后呼叫基类发射 UI 刷新信号
+        Enemy::rollNextIntent();
     }
 };

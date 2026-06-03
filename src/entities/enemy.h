@@ -74,6 +74,12 @@ public:
     // 🔴 获取和设置体型倍率
     qreal getScaleFactor() const { return m_scaleFactor; }
     void setScaleFactor(qreal scale) { m_scaleFactor = scale; }
+    // ========================================================
+    // 🧠 抹除意图：打完收工后，让大脑陷入沉睡
+    // ========================================================
+    void clearIntent() {
+        m_currentIntent = Intent(IntentType::Unknown);
+    }
 
 signals:
     void intentChanged(IntentType type, int value);

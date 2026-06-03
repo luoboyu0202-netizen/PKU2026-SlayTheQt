@@ -6,7 +6,7 @@ class WizardGremlin : public Enemy {
     Q_OBJECT
 public:
     explicit WizardGremlin(QObject* parent = nullptr)
-        : Enemy("地精巫师", QRandomGenerator::global()->bounded(23, 26), ":/resources/images/enemies/wizard_gremlin.png", parent) {
+        : Enemy("地精巫师", QRandomGenerator::global()->bounded(15, 17), ":/resources/images/enemies/wizard_gremlin.png", parent) {
         setId("Wizard_Gremlin");
     }
 

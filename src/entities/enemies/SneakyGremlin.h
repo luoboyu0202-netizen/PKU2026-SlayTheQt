@@ -6,7 +6,7 @@ class SneakyGremlin : public Enemy {
     Q_OBJECT
 public:
     explicit SneakyGremlin(QObject* parent = nullptr)
-        : Enemy("狡诈地精", QRandomGenerator::global()->bounded(10, 15), ":/resources/images/enemies/sneaky_gremlin.png", parent) {
+        : Enemy("狡诈地精", QRandomGenerator::global()->bounded(10, 12), ":/resources/images/enemies/sneaky_gremlin.png", parent) {
         setId("Sneaky_Gremlin");
     }
 
