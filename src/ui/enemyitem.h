@@ -70,4 +70,5 @@ private:
 
     // 🔴 存储浮动偏移量的变量
     qreal m_intentFloatOffset = 0.0;
+    QPixmap m_currentIntentIcon; // 预加载好的当前意图图标
 };

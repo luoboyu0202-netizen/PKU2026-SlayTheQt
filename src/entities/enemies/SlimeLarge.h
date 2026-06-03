@@ -5,7 +5,7 @@ class SlimeLarge : public Enemy {
     Q_OBJECT
 public:
     explicit SlimeLarge(QObject* parent = nullptr)
-        : Enemy("酸液大史莱姆", 80, ":/resources/images/enemies/slime_acid.png", parent) {
+        : Enemy("酸液大史莱姆", 68, ":/resources/images/enemies/slime_acid.png", parent) {
         setId("Slime_01");
     }
 

@@ -159,4 +159,10 @@ private:
     bool m_isAutoPlayingCard = false;
 
     bool m_isExecutingRevealed = false;
+
+    // ========================================================
+    // ⏳ 战斗演出升级：异步结算系统
+    // ========================================================
+    void processNextEnemyAction(int index); // 核心：递归执行动作的齿轮
+    QList<Enemy*> m_pendingSpawns;          // 核心：把临时等候室变成全局的，防止异步传递时丢失！
 };

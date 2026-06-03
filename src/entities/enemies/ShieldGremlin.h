@@ -6,7 +6,7 @@ class ShieldGremlin : public Enemy {
     Q_OBJECT
 public:
     explicit ShieldGremlin(QObject* parent = nullptr)
-        : Enemy("盾地精", QRandomGenerator::global()->bounded(12, 16), ":/resources/images/enemies/shield_gremlin.png", parent) {
+        : Enemy("盾地精", QRandomGenerator::global()->bounded(13, 14), ":/resources/images/enemies/shield_gremlin.png", parent) {
         setId("Shield_Gremlin");
     }
 
