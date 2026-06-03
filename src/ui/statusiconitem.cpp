@@ -15,27 +15,27 @@ StatusIconItem::StatusIconItem(StatusType type, int amount, QGraphicsItem* paren
     // 根据不同状态，加载不同的图片和提示语
     switch (type) {
     case StatusType::Strength:
-        m_icon = QPixmap(":/resources/images/strength.png"); // 请换成你实际的图片路径喵
+        m_icon = QPixmap(":/resources/images/icons/strength.png"); // 请换成你实际的图片路径喵
         m_tooltipText = QStringLiteral("力量\n攻击伤害增加。");
         m_isDebuff = false;
         break;
     case StatusType::Vulnerable:
-        m_icon = QPixmap(":/resources/images/vulnerable.png");
+        m_icon = QPixmap(":/resources/images/icons/vulnerable.png");
         m_tooltipText = QStringLiteral("易伤\n受到的攻击伤害增加 50%。");
         m_isDebuff = true;
         break;
     case StatusType::Weak:
-        m_icon = QPixmap(":/resources/images/weak.png");
+        m_icon = QPixmap(":/resources/images/icons/weak.png");
         m_tooltipText = QStringLiteral("虚弱\n造成的攻击伤害减少 25%。");
         m_isDebuff = true;
         break;
     case StatusType::Dexterity:
-        m_icon = QPixmap(":/resources/images/dexterity.png");
+        m_icon = QPixmap(":/resources/images/icons/dexterity.png");
         m_tooltipText = QStringLiteral("敏捷\n获得的格挡增加。");
         m_isDebuff = false;;
         break;
     case StatusType::Frail:
-        m_icon = QPixmap(":/resources/images/frail.png"); // 🔴 记得找一张绿色的心碎或者盾牌破裂的图标放进资源里喵！
+        m_icon = QPixmap(":/resources/images/icons/frail.png"); // 🔴 记得找一张绿色的心碎或者盾牌破裂的图标放进资源里喵！
         m_tooltipText = QStringLiteral("脆弱\n从卡牌获得的格挡减少 25%。");
         m_isDebuff = true; // 🔴 给它画上红色的边框！
         break;
@@ -78,6 +78,11 @@ StatusIconItem::StatusIconItem(StatusType type, int amount, QGraphicsItem* paren
         m_tooltipText =QStringLiteral("地狱狂徒\n每当你抽到一张名字中含有“打击”的牌时，立即将其打出。").arg(m_amount);
         break;
         // ... 其他状态 ...
+    case StatusType::Angry:
+        m_icon = QPixmap(":/resources/images/icons/angry.png"); // 记得准备一张红色的暴怒图标喵！
+        m_tooltipText = QStringLiteral("愤怒\n受到攻击时，获得 %1 点力量。").arg(m_amount);
+        m_isDebuff = false; // 对于怪物来说，这是个强力增益，画高贵的蓝框！
+        break;
     case StatusType::Confusion:
         m_icon = QPixmap(":/resources/images/icons/HellFiend_icon.png");
         // 原作中是一个被铁链锁住的重物图标
@@ -154,6 +159,9 @@ void StatusIconItem::setAmount(int amount) {
         break;
     case StatusType::DarkEmbrace:
         m_tooltipText = QStringLiteral("黑暗之拥\n每当有一张牌被消耗时，抽 %1 张牌。").arg(m_amount);
+        break;
+    case StatusType::Angry:
+        m_tooltipText = QStringLiteral("愤怒\n受到攻击时，获得 %1 点力量。").arg(m_amount);
         break;
 
     // 以后如果有其他随层数变化的提示词，也可以加在这里喵！

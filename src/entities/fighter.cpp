@@ -47,6 +47,25 @@ void Fighter::takeDamage(int amount) {
         qDebug() << "[Combat]" << m_name << "took" << amount << "damage. Current HP:" << m_hp;
         emit hpChanged(m_hp, m_maxHp);
     }
+
+    // ========================================================
+    // 😡【状态系统钩子：受击触发 (On Attacked)】
+    // ========================================================
+    // 检查身上是否有“愤怒”状态
+    if (m_statusManager) {
+        int angryStacks = m_statusManager->getStatus(StatusType::Angry);
+        if (angryStacks > 0) {
+            // 只要挨打，立刻增加等同于愤怒层数的力量！
+            m_statusManager->applyStatus(StatusType::Strength, angryStacks);
+            qDebug() << "[Fighter] 😡" << m_name << "愤怒了！获得了" << angryStacks << "点力量！";
+
+            // 🔴 魔法共鸣：
+            // applyStatus 会自动发射 statusChanged 信号！
+            // EnemyItem 监听到后会自动触发 update()！
+            // 我们的 paint() 渲染管线会自动读取这层新的力量，并瞬间放大头顶的伤害数字和刀的图标！
+        }
+    }
+
 }
 
 void Fighter::addBlock(int amount) {

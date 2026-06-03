@@ -37,6 +37,7 @@ protected:
     // 🔴 声明鼠标进入和离开的事件
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
+    void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override; // 新增！
 
 private:
     Enemy* m_logicEnemy;
