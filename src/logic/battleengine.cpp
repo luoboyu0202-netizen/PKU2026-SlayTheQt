@@ -97,13 +97,14 @@ void BattleEngine::refreshEnemyIntent() {
         // 3. 只要这只怪物的意图带“攻击”，统统扔进管道里，结合它身上的力量、或者玩家身上的易伤重算伤害！
         if (intent.type == IntentType::Attack ||
             intent.type == IntentType::AttackAndDebuff ||
-            intent.type == IntentType::AttackAndBuff) {
+            intent.type == IntentType::AttackAndDefend) {
 
             // ⚠️ 核心微调：这里的 source 换成当前循环里的 enemy 喵！
             intent.value = StatusManager::calculateDamage(enemy, m_player, intent.value);
         }
         // 🔴 如果未来加上了“脆弱”对防御的减益，可以在这里让带防御的意图也重算护甲喵！
-        else if (intent.type == IntentType::Defend || intent.type == IntentType::DefendAndBuff) {
+        else if (intent.type == IntentType::Defend || intent.type == IntentType::DefendAndBuff
+                 || intent.type == IntentType::AttackAndDefend) {
             intent.value = StatusManager::calculateBlock(enemy, intent.value);
         }
 
@@ -115,8 +116,25 @@ void BattleEngine::refreshEnemyIntent() {
 
 void BattleEngine::startBattle() {
     qDebug() << "[Engine] Battle Started!";
-    m_isFirstTurn = true; // 🔴 每次新战斗开始，重置为第一回合！
+    m_isFirstTurn = true;
 
+    // ========================================================
+    // 🔴 战前动员诊断
+    // ========================================================
+    qDebug() << "[🔬 Diagnostic - Engine] 开始全场怪物战前初始化，当前怪物数量:" << m_enemies.size();
+    for (Enemy* enemy : m_enemies) {
+        if (enemy) {
+            qDebug() << "[🔬 Diagnostic - Engine] 正在呼叫怪物入场钩子:" << enemy->getName();
+            enemy->onBattleStart();
+            enemy->rollNextIntent();
+        } else {
+            qDebug() << "[🔬 Diagnostic - Engine] 🚨 警告：发现空的怪物指针！";
+        }
+    }
+
+    refreshEnemyIntent();
+
+    // 遗物触发...
     if (m_relicManager) {
         for (Relic* r : m_relicManager->getRelics()) {
             if (r) {
@@ -125,6 +143,7 @@ void BattleEngine::startBattle() {
             }
         }
     }
+
     startPlayerTurn();
 }
 
@@ -379,10 +398,21 @@ void BattleEngine::processEnemyTurn() {
             m_player->takeDamage(finalDmg);
             m_player->getStatusManager()->applyStatus(currentIntent.statusType, currentIntent.statusValue);
         }
-        else if (currentIntent.type == IntentType::AttackAndBuff) {
+        // ========================================================
+        // 🔴【新增】：大顎蟲的招牌絕技！打人並給自己疊甲！
+        // ========================================================
+        else if (currentIntent.type == IntentType::AttackAndDefend) {
             int finalDmg = StatusManager::calculateDamage(enemy, m_player, currentIntent.value);
-            m_player->takeDamage(finalDmg);
-            enemy->getStatusManager()->applyStatus(currentIntent.statusType, currentIntent.statusValue);
+
+            // 兼容多段攻擊（雖然大顎蟲只有一段，但架構要寫全喵！）
+            for (int i = 0; i < currentIntent.multiHitCount; ++i) {
+                if (m_player->isDead()) break;
+                m_player->takeDamage(finalDmg);
+            }
+
+            // 🔴 核心注意：在我們大顎蟲的設計裡，護甲值是存在 statusValue 裡的！
+            int finalBlk = StatusManager::calculateBlock(enemy, currentIntent.statusValue);
+            enemy->addBlock(finalBlk);
         }
         else if (currentIntent.type == IntentType::DefendAndBuff) {
             int finalBlk = StatusManager::calculateBlock(enemy, currentIntent.value);
@@ -411,11 +441,9 @@ void BattleEngine::processEnemyTurn() {
         // ========================================================
         else if (currentIntent.type == IntentType::Summon) {
 
-            // 1. 定义赛制上限：场上最多允许 4 个槽位（0, 1, 2, 3）
             const int MAX_SLOTS = 4;
             QVector<bool> slotOccupied(MAX_SLOTS, false);
 
-            // 2. 扫描全场：先记录老怪物占了哪些坑
             for (Enemy* e : m_enemies) {
                 if (e && !e->isDead()) {
                     int slot = e->getSlotIndex();
@@ -425,25 +453,29 @@ void BattleEngine::processEnemyTurn() {
                 }
             }
 
-            // ========================================================
-            // 🔴 核心魔法：根据意图里的 value 决定召唤几只！
-            // ========================================================
             int summonCount = currentIntent.value;
             qDebug() << "[Engine]" << enemy->getName() << "发大招啦！准备召唤" << summonCount << "只" << currentIntent.enemyIdToSummon;
 
+            // ========================================================
+            // 🔴【核心修改 2】：视觉平衡优先顺序！(2 -> 3 -> 4 -> 1)
+            // 对应的内部 Slot Index 是 1, 2, 3, 0
+            // ========================================================
+            const int preferredOrder[4] = {1, 2, 3, 0};
+
             for (int k = 0; k < summonCount; ++k) {
-                // 3. 在循环内部：每次都重新从左往右找空位！
                 int targetFreeSlot = -1;
+
+                // 🔴 按照优先表去找空位，而不是从左到右死板遍历！
                 for (int i = 0; i < MAX_SLOTS; ++i) {
-                    if (!slotOccupied[i]) {
-                        targetFreeSlot = i;
+                    int checkSlot = preferredOrder[i];
+                    if (!slotOccupied[checkSlot]) {
+                        targetFreeSlot = checkSlot;
                         break;
                     }
                 }
 
-                // 4. 结算：找到了坑位就塞进去
                 if (targetFreeSlot != -1) {
-                    qDebug() << "[Engine] 成功在" << targetFreeSlot << "号位挤出了第" << (k+1) << "只小怪喵！";
+                    qDebug() << "[Engine] 遵循视觉平衡，成功在" << targetFreeSlot << "号位挤出了第" << (k+1) << "只小怪喵！";
 
                     Enemy* newSpawn = EnemyFactory::createEnemy(currentIntent.enemyIdToSummon);
                     newSpawn->setSlotIndex(targetFreeSlot);
@@ -451,14 +483,53 @@ void BattleEngine::processEnemyTurn() {
                     newSpawns.append(newSpawn);
                     emit enemySummoned(newSpawn);
 
-                    // 🔴 极其重要：刚生成完，必须立刻把这个坑位标记为“已占领”！
-                    // 否则下一次循环，第二只小怪又会挤进同一个坑里喵！
+                    // 立刻标记为已占领
                     slotOccupied[targetFreeSlot] = true;
 
                 } else {
-                    // 如果连找都没找到，说明满了，直接打断循环！
                     qDebug() << "[Engine] 战场已满！只成功召唤了" << k << "只，剩下的被憋回去了喵！";
                     break;
+                }
+            }
+        }
+        else if (currentIntent.type == IntentType::Curse) {
+            qDebug() << "[Engine]" << enemy->getName() << "正在释放可怕的诅咒！";
+
+            // 1. 如果意图里带了状态（比如 Confusion 混乱），直接施加！
+            if (currentIntent.statusType != StatusType::None) {
+                m_player->getStatusManager()->applyStatus(currentIntent.statusType, currentIntent.value);
+            }
+
+            // 2. 如果意图里带了卡牌 ID（比如要塞入不可打出的诅咒牌），洗入牌库！
+            if (!currentIntent.cardIdToInsert.isEmpty()) {
+                qDebug() << "[Engine] 诅咒生效：向玩家牌库塞入了" << currentIntent.value << "张" << currentIntent.cardIdToInsert;
+
+                // 假设这是塞入“疑虑(Doubt)”或“笨拙(Clumsy)”等诅咒牌的逻辑
+                for (int i = 0; i < currentIntent.value; ++i) {
+                    // 你可以根据 cardIdToInsert 通过 CardFactory 印出诅咒牌
+                    // Card* curseCard = CardFactory::createCard(currentIntent.cardIdToInsert);
+                    // m_cardManager->addCardToDiscardPile(curseCard);
+                }
+                m_cardManager->emitPileCounts();
+            }
+        }
+        else if (currentIntent.type == IntentType::GroupBuff) {
+            qDebug() << "[Engine]" << enemy->getName() << "发出了震耳欲聋的战吼，全体怪物获得强化！";
+            for (Enemy* ally : m_enemies) {
+                if (ally && !ally->isDead()) {
+                    ally->getStatusManager()->applyStatus(currentIntent.statusType, currentIntent.value);
+                }
+            }
+        }
+        // ========================================================
+        // 🛡️【全新机制】：群体护甲！(盾地精的无私奉献)
+        // ========================================================
+        else if (currentIntent.type == IntentType::GroupDefend) {
+            qDebug() << "[Engine]" << enemy->getName() << "举起巨盾，保护了所有同伴！";
+            for (Enemy* ally : m_enemies) {
+                if (ally && !ally->isDead()) {
+                    int finalBlk = StatusManager::calculateBlock(enemy, currentIntent.value);
+                    ally->addBlock(finalBlk);
                 }
             }
         }
@@ -483,7 +554,12 @@ void BattleEngine::processEnemyTurn() {
     // ========================================================
     for (Enemy* spawn : newSpawns) {
         m_enemies.append(spawn);
+        // 🔴 魔法生效！让刚落地的新兵立刻动脑，想好下回合干嘛！
+        spawn->rollNextIntent();
     }
+
+    // 🔴 刷新全场意图！确保新怪物的意图和老怪物受易伤影响的伤害，统统被重新计算并发送给 UI！
+    refreshEnemyIntent();
 
     // ========================================================
     // 🟢 7. 玩家状态结算 & 回合交替

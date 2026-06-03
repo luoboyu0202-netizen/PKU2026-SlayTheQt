@@ -1,45 +1,46 @@
 #include "Enemy.h"
 #include <QDebug>
 
-// 🔴 构造函数初始化列表里，把 imagePath 存下来喵！
+// ========================================================
+// 🧬 构造函数：极致纯净的肉体初始化
+// ========================================================
 Enemy::Enemy(const QString& name, int maxHp, const QString& imagePath, QObject* parent)
-    : Fighter(name, maxHp, parent), m_currentIntentIndex(0), m_imagePath(imagePath) {
-    // 🔴 幽灵变量 m_currentIntent 和多余的 m_sequenceIndex 已经被彻底清除！
+    : Fighter(name, maxHp, parent), m_imagePath(imagePath)
+{
+    // 🔴 历史包袱全部卸下！
+    // 意图相关的变量 (m_currentIntent, m_moveHistory) 已在头文件自动初始化
 }
 
-void Enemy::setIntentSequence(const QList<Intent>& sequence) {
-    m_intentSequence = sequence;
-    m_currentIntentIndex = 0; // 战斗刚开始，稳稳锁定在第 0 个意图
-
-    // 🔴 修复跳帧 Bug：
-    // 刚刚注入序列时，不需要“翻页(roll)”，只需要直接把第 0 个意图广播给 UI 即可！
-    if (!m_intentSequence.isEmpty()) {
-        Intent firstIntent = getCurrentIntent();
-        emit intentChanged(firstIntent.type, firstIntent.value);
-    }
-}
-
+// ========================================================
+// 🧠 虚拟大脑中枢：基类的默认实现
+// ========================================================
 void Enemy::rollNextIntent() {
-    if (!m_intentSequence.isEmpty()) {
-        // 🔴 只有在回合真正结束时，引擎大脑才会调用这里，拨动齿轮走向下一步
-        m_currentIntentIndex = (m_currentIntentIndex + 1) % m_intentSequence.size();
+    // ⚠️ 警告：因为我们砍掉了旧版的死板序列，基类不再负责逻辑推演。
+    // 这里只作为 UI 广播的「兜底发射塔」！
+    //
+    // 💡 最佳实践：
+    // 未来的子类（如 JawWorm, Slime）在重写此函数时，
+    // 算出新的 m_currentIntent 后，可以在最后一行调用 Enemy::rollNextIntent();
+    // 这样就能自动刷新头顶的意图 UI 啦喵！
 
-        Intent nextIntent = getCurrentIntent();
-        emit intentChanged(nextIntent.type, nextIntent.value);
+    if (m_currentIntent.type != IntentType::Unknown) {
+        emit intentChanged(m_currentIntent.type, m_currentIntent.value);
+    } else {
+        qDebug() << "[Enemy-AI] 🚨 警告：" << m_name << " 还没有决定好意图！请检查子类是否正确重写了 AI！";
     }
 }
-// ==========================================================
-// 🔴【新增】：护甲逻辑实现
-// ==========================================================
 
+// ========================================================
+// 🛡️ 护甲系统：绝对稳固的防御壁垒
+// ========================================================
 void Enemy::addBlock(int b) {
     if (b > 0) {
-        // m_block 是继承自 Fighter 的变量（如果报错说找不到，去 Fighter.h 里把它改成 protected: int m_block; 即可喵）
+        // m_block 继承自 Fighter，这里直接修改
         m_block += b;
 
-        qDebug() << "[Enemy]" << m_name << "gained" << b << "block! Total:" << m_block;
+        qDebug() << "[Enemy]" << m_name << "获得了" << b << "点格挡！当前总格挡:" << m_block;
 
-        // 核心：发射信号，让 UI 层的盾牌图标立刻画出来！
+        // 🔴 呼叫 UI 舞台，画出盾牌！
         emit blockChanged(m_block);
     }
 }
@@ -48,9 +49,9 @@ void Enemy::loseBlock() {
     if (m_block > 0) {
         m_block = 0;
 
-        qDebug() << "[Enemy]" << m_name << "lost all block at the start of turn.";
+        qDebug() << "[Enemy]" << m_name << "的回合开始，失去所有残存格挡。";
 
-        // 核心：发射信号，让 UI 层的盾牌图标消失！
+        // 🔴 呼叫 UI 舞台，粉碎盾牌！
         emit blockChanged(m_block);
     }
 }

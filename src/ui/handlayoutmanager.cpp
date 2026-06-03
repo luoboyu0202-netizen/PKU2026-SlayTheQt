@@ -115,7 +115,7 @@ void HandLayoutManager::recalculateLayout() {
         // 升级：因为卡牌变大了，基础 Y 轴向上提（改为 850）防止超出屏幕底边缘。
         // 下沉乘数改为 1.2，让最边缘的牌也不会掉下去太多。
         // ========================================================
-        qreal targetY = 1000 + qAbs(angle) * 1.2;
+        qreal targetY = 960 + qAbs(angle) * 1.2;
 
         item->setHomeState(QPointF(targetX, targetY), angle);
 

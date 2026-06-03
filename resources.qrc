@@ -1,20 +1,7 @@
 <RCC>
     <qresource prefix="/">
-        <file>resources/images/vulnerable.png</file>
-        <file>resources/images/weak.png</file>
-        <file>resources/images/strength.png</file>
-        <file>resources/images/dexterity.png</file>
-        <file>resources/images/frail.png</file>
-        <file>resources/images/attack.png</file>
-        <file>resources/images/attack_debuff.png</file>
-        <file>resources/images/buff.png</file>
-        <file>resources/images/debuff.png</file>
-        <file>resources/images/defend.png</file>
-        <file>resources/images/defend_buff.png</file>
         <file>resources/images/ironclad.png</file>
-        <file>resources/images/slime_acid.png</file>
         <file>resources/images/thunder_beach.png</file>
-        <file>resources/images/slime_small.png</file>
         <file>resources/images/cards/bash.png</file>
         <file>resources/images/cards/defend.png</file>
         <file>resources/images/cards/strike.png</file>
@@ -25,7 +12,6 @@
         <file>resources/images/cards/dazed.png</file>
         <file>resources/images/cards/wound.png</file>
         <file>resources/images/cards/slimed.png</file>
-        <file>resources/images/summon.png</file>
         <file>resources/images/cards/inflame.png</file>
         <file>resources/images/cards/darkembrace.png</file>
         <file>resources/images/cards/firesource.png</file>
@@ -107,5 +93,35 @@
         <file>resources/images/relics/relic_meat_on_the_bone.png</file>
         <file>resources/images/relics/relic_ornamental_fan.png</file>
         <file>resources/images/relics/relic_tungsten_rod.png</file>
+        <file>resources/images/enemies/slime_acid.png</file>
+        <file>resources/images/enemies/slime_small.png</file>
+        <file>resources/images/intents/attack_1.png</file>
+        <file>resources/images/intents/attack_2.png</file>
+        <file>resources/images/intents/attack_3.png</file>
+        <file>resources/images/intents/attack_4.png</file>
+        <file>resources/images/intents/attack_5.png</file>
+        <file>resources/images/intents/attack_debuff.png</file>
+        <file>resources/images/intents/attack_debuff1.png</file>
+        <file>resources/images/intents/attack_defend.png</file>
+        <file>resources/images/intents/buff.png</file>
+        <file>resources/images/intents/curse.png</file>
+        <file>resources/images/intents/debuff.png</file>
+        <file>resources/images/intents/defend.png</file>
+        <file>resources/images/intents/defend_buff.png</file>
+        <file>resources/images/intents/escape.png</file>
+        <file>resources/images/enemies/jaw_worm.png</file>
+        <file>resources/images/icons/dexterity.png</file>
+        <file>resources/images/icons/frail.png</file>
+        <file>resources/images/icons/strength.png</file>
+        <file>resources/images/icons/vulnerable.png</file>
+        <file>resources/images/icons/weak.png</file>
+        <file>resources/images/intents/unknown.png</file>
+        <file>resources/images/enemies/fat_gremlin.png</file>
+        <file>resources/images/enemies/gremlin_leader.png</file>
+        <file>resources/images/enemies/mad_gremlin.png</file>
+        <file>resources/images/enemies/shield_gremlin.png</file>
+        <file>resources/images/enemies/sneaky_gremlin.png</file>
+        <file>resources/images/enemies/wizard_gremlin.png</file>
+        <file>resources/images/icons/angry.png</file>
     </qresource>
 </RCC>
