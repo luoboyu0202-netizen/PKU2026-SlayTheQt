@@ -19,6 +19,9 @@
 #include "relics/ToriiRelic.h"         // ⛩️ 鸟居
 #include "relics/PrayerWheelRelic.h"   // 📿 念珠手镯
 #include "relics/IceCreamRelic.h"      // 🍦 冰淇淋
+#include "relics/OrnamentalFanRelic.h"
+#include "relics/MeatOnTheBoneRelic.h"
+#include "relics/TungstenRodRelic.h"
 
 // ========================================================
 // 📜 【全图鉴总表】：唯一真理！摇奖池直接从这里读取！
@@ -29,7 +32,8 @@ static const QStringList ALL_REGISTERED_RELICS = {
     "relic_anchor", "relic_burning_blood", "relic_vajra", "relic_snecko_eye",
     "relic_lantern", "relic_happy_flower", "relic_shuriken",
     "relic_smooth_stone", "relic_mercury_hourglass",
-    "relic_torii", "relic_prayer_wheel", "relic_ice_cream"
+    "relic_torii", "relic_prayer_wheel", "relic_ice_cream",
+    "relic_ornamental_fan", "relic_meat_on_the_bone", "relic_tungsten_rod" // 🔴 加在这里！
 };
 
 Relic* RelicFactory::createRelic(const QString& relicId, QObject* parent) {
@@ -52,6 +56,9 @@ Relic* RelicFactory::createRelic(const QString& relicId, QObject* parent) {
     else if (relicId == "relic_torii") relic = new ToriiRelic(parent);
     else if (relicId == "relic_prayer_wheel") relic = new PrayerWheelRelic(parent);
     else if (relicId == "relic_ice_cream") relic = new IceCreamRelic(parent);
+    else if (relicId == "relic_ornamental_fan") relic = new OrnamentalFanRelic(parent);
+    else if (relicId == "relic_meat_on_the_bone") relic = new MeatOnTheBoneRelic(parent);
+    else if (relicId == "relic_tungsten_rod") relic = new TungstenRodRelic(parent);
 
     // 2. 🔴 灵魂灌注：恢复计数器
     if (relic) {

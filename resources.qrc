@@ -102,5 +102,8 @@
         <file>resources/images/relics/relic_shuriken.png</file>
         <file>resources/images/relics/relic_smooth_stone.png</file>
         <file>resources/images/relics/relic_torii.png</file>
+        <file>resources/images/relics/relic_meat_on_the_bone.png</file>
+        <file>resources/images/relics/relic_ornamental_fan.png</file>
+        <file>resources/images/relics/relic_tungsten_rod.png</file>
     </qresource>
 </RCC>

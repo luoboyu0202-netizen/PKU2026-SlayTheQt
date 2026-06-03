@@ -99,13 +99,16 @@ HEADERS += \
     src/entities/relics/HappyFlowerRelic.h \
     src/entities/relics/IceCreamRelic.h \
     src/entities/relics/LanternRelic.h \
+    src/entities/relics/MeatOnTheBoneRelic.h \
     src/entities/relics/MercuryHourglassRelic.h \
+    src/entities/relics/OrnamentalFanRelic.h \
     src/entities/relics/PenNibRelic.h \
     src/entities/relics/PrayerWheelRelic.h \
     src/entities/relics/ShurikenRelic.h \
     src/entities/relics/SmoothStoneRelic.h \
     src/entities/relics/SneckoEyeRelic.h \
     src/entities/relics/ToriiRelic.h \
+    src/entities/relics/TungstenRodRelic.h \
     src/entities/relics/VajraRelic.h \
     src/entities/relics/OrichalcumRelic.h \
     src/entities/relics/AnchorRelic.h \
