@@ -262,11 +262,10 @@ void MerchantView::mousePressEvent(QMouseEvent* event) {
 
     if (m_phase == Phase::Encounter) {
         // ========================================================
-        // 🎯 核心修復：縮小商人的隱形判定框 (Hitbox)！
-        // 原始：QRectF(1200, 420, 500, 650)
-        // 瘦身後：X 往右挪一點，寬高大幅度砍掉，讓出周圍的點擊空間！
+        // 🎯 商人判定框：避免与离开按钮重叠。
+        // 离开按钮的命中检测已由 LeaveButton::shape() 收紧。
         // ========================================================
-        QRectF merchantRect(1280, 470, 350, 500);
+        QRectF merchantRect(1280, 470, 350, 250);
         if (merchantRect.contains(scenePt)) {
             onMerchantClicked();
             return;

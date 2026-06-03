@@ -1,6 +1,7 @@
 #pragma once
 #include <QGraphicsObject>
 #include <QFont>
+#include <QPainterPath>
 
 class LeaveButton : public QGraphicsObject {
     Q_OBJECT
@@ -11,6 +12,7 @@ public:
     void setText(const QString& text);
 
     QRectF boundingRect() const override;
+    QPainterPath shape() const override;
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override;
 
 signals:
