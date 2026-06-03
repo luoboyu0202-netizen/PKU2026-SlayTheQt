@@ -15,7 +15,7 @@ public:
                        QWidget* parent = nullptr);
 
 protected:
-    void setupContent();
+    void setupContent() override;
     void mousePressEvent(QMouseEvent* event) override;
 
 private:

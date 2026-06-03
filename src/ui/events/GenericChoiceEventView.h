@@ -22,7 +22,7 @@ public:
     void setOptionsEnabled(bool enabled); // 新增：控制所有选项的可用性
 
 protected:
-    void setupContent();
+    void setupContent() override;
 
 private:
     QGraphicsPixmapItem* m_bgItem = nullptr;
