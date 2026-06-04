@@ -90,6 +90,11 @@ StatusIconItem::StatusIconItem(StatusType type, int amount, QGraphicsItem* paren
         m_tooltipText =QStringLiteral("混乱\n你感到蛇教的力量在祝福着你，但代价是...?").arg(m_amount);
         break;
         // ... 其他状态 ...
+    case StatusType::Ritual:
+        m_icon = QPixmap(":/resources/images/icons/ritual.png"); // 记得准备一张黑底交叉羽毛的图标喵！
+        m_tooltipText = QStringLiteral("仪式\n回合结束时，获得 %1 点力量。").arg(m_amount);
+        m_isDebuff = false; // 高贵的蓝框 Buff
+        break;
     }
 
     // ========================================================
@@ -162,6 +167,9 @@ void StatusIconItem::setAmount(int amount) {
         break;
     case StatusType::Angry:
         m_tooltipText = QStringLiteral("愤怒\n受到攻击时，获得 %1 点力量。").arg(m_amount);
+        break;
+    case StatusType::Ritual:
+        m_tooltipText = QStringLiteral("仪式\n回合结束时，获得 %1 点力量。").arg(m_amount);
         break;
 
     // 以后如果有其他随层数变化的提示词，也可以加在这里喵！

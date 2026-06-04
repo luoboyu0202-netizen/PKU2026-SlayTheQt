@@ -93,14 +93,6 @@
         <file>resources/images/relics/relic_tungsten_rod.png</file>
         <file>resources/images/enemies/slime_acid.png</file>
         <file>resources/images/enemies/slime_small.png</file>
-        <file>resources/images/intents/attack_1.png</file>
-        <file>resources/images/intents/attack_2.png</file>
-        <file>resources/images/intents/attack_3.png</file>
-        <file>resources/images/intents/attack_4.png</file>
-        <file>resources/images/intents/attack_5.png</file>
-        <file>resources/images/intents/attack_debuff.png</file>
-        <file>resources/images/intents/attack_debuff1.png</file>
-        <file>resources/images/intents/attack_defend.png</file>
         <file>resources/images/intents/buff.png</file>
         <file>resources/images/intents/curse.png</file>
         <file>resources/images/intents/debuff.png</file>
@@ -121,5 +113,23 @@
         <file>resources/images/enemies/sneaky_gremlin.png</file>
         <file>resources/images/enemies/wizard_gremlin.png</file>
         <file>resources/images/icons/angry.png</file>
+        <file>resources/images/enemies/cultist.png</file>
+        <file>resources/images/icons/ritual.png</file>
+        <file>resources/images/ironclad_corpse.png</file>
+        <file>resources/images/intents/attack_1.png</file>
+        <file>resources/images/intents/attack_2.png</file>
+        <file>resources/images/intents/attack_3.png</file>
+        <file>resources/images/intents/attack_4.png</file>
+        <file>resources/images/intents/attack_5.png</file>
+        <file>resources/images/intents/attack_6.png</file>
+        <file>resources/images/intents/attack_debuff_1.png</file>
+        <file>resources/images/intents/attack_debuff_2.png</file>
+        <file>resources/images/intents/attack_debuff_3.png</file>
+        <file>resources/images/intents/attack_debuff_4.png</file>
+        <file>resources/images/intents/attack_debuff_5.png</file>
+        <file>resources/images/intents/attack_defend_1.png</file>
+        <file>resources/images/intents/attack_defend_2.png</file>
+        <file>resources/images/intents/attack_defend_3.png</file>
+        <file>resources/images/intents/attack_defend_4.png</file>
     </qresource>
 </RCC>

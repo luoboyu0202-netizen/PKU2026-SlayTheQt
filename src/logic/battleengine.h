@@ -137,6 +137,8 @@ signals:
     // 🔴 告诉 UI：有牌被强行拉出来了！快播飞到屏幕中央的动画！
     void topCardRevealed(Card* card, bool exhaustIt);
 
+    void enemyActing(Enemy* enemy);
+
 public slots:
     void refreshEnemyIntent();
 

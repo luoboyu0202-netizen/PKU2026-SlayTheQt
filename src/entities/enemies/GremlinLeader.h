@@ -12,7 +12,7 @@ public:
     explicit GremlinLeader(QObject* parent = nullptr)
         : Enemy("地精头子", 50, ":/resources/images/enemies/gremlin_leader.png", parent) {
         setId("Gremlin_Leader");
-        setScaleFactor(1.5); // 大哥的排面！
+        setScaleFactor(1.8); // 大哥的排面！
     }
 
     void rollNextIntent() override {

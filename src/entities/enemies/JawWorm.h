@@ -12,6 +12,7 @@ public:
     explicit JawWorm(QObject* parent = nullptr)
         : Enemy("大颚虫", 25, ":/resources/images/enemies/jaw_worm.png", parent) {
         setId("Jaw_Worm");
+        setScaleFactor(1.5);
     }
 
     // ========================================================

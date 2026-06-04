@@ -35,6 +35,8 @@ signals:
     void hpChanged(int currentHp, int maxHp);
     void blockChanged(int currentBlock);
     void died(Fighter* entity);
+    void animationTakeDamage();
+    void animationAction();
 
 protected:
     StatusManager* m_statusManager; // 🔴【新组件】：随身携带的状态背包！

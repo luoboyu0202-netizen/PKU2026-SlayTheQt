@@ -22,6 +22,11 @@ public:
     QRectF boundingRect() const override;
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override;
 
+public slots:
+    void playHitAnimation();    // 播放受击震动
+    void playActionAnimation(); // 播放出招前扑 (主角从左往右扑！)
+    void playDeathAnimation();
+
 private:
     // 自动重排版工人
     void layoutStatusIcons();

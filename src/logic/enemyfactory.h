@@ -18,6 +18,7 @@
 #include "enemies/SneakyGremlin.h"
 #include "enemies/WizardGremlin.h"
 #include "enemies/GremlinLeader.h"
+#include "enemies/Cultist.h"
 
 class EnemyFactory {
 public:
@@ -37,7 +38,7 @@ public:
         }
         else {
             // 🎲 普怪池：把 Jaw_Worm 加进来了！
-            QStringList monsterPool = { "Single_Slime", "Mad_Gremlin_Gang", "Single_Jaw_Worm"};
+            QStringList monsterPool = {"Slime_Squad", "Single_Slime", "Single_Cultist", "Single_Jaw_Worm"};
             encounterId = monsterPool[QRandomGenerator::global()->bounded(monsterPool.size())];
         }
 
@@ -48,7 +49,7 @@ public:
 
         // 💉 强化车间：层数动态补正
         for (Enemy* e : squad) {
-            int hpBuff = currentLayer * 3;
+            int hpBuff = currentLayer * 0.2;
             e->setMaxHp(e->getMaxHp() + hpBuff);
             e->setHp(e->getMaxHp());
         }
@@ -107,6 +108,11 @@ public:
             Enemy* minion2 = createEnemy("Random_Gremlin"); minion2->setSlotIndex(2);
             squad << minion1 << minion2;
         }
+        else if (encounterId == "Single_Cultist") {
+            Enemy* cultist = createEnemy("Cultist");
+            cultist->setSlotIndex(2); // 稳坐屏幕 C 位
+            squad << cultist;
+        }
 
         return squad;
     }
@@ -125,6 +131,7 @@ public:
         if (enemyId == "Sneaky_Gremlin") return new SneakyGremlin();
         if (enemyId == "Wizard_Gremlin") return new WizardGremlin();
         if (enemyId == "Gremlin_Leader") return new GremlinLeader();
+        if (enemyId == "Cultist") return new Cultist();
 
         // ========================================================
         // 🎁 盲盒解析系统：当收到 "Random_Gremlin" 指令时，随机吐出一只！
