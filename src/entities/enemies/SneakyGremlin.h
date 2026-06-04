@@ -8,6 +8,7 @@ public:
     explicit SneakyGremlin(QObject* parent = nullptr)
         : Enemy("狡诈地精", QRandomGenerator::global()->bounded(10, 12), ":/resources/images/enemies/sneaky_gremlin.png", parent) {
         setId("Sneaky_Gremlin");
+        setScaleFactor(1.2);
     }
 
     void rollNextIntent() override {

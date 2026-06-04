@@ -23,6 +23,7 @@ enum class StatusType {
     HellFiend,
     Confusion,
     Angry,
+    Ritual,  // 仪式：在你的回合结束时，获得特定层数的力量！
     None
     // 未来可以无限扩展：中毒、荆棘、再生...
 };

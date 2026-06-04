@@ -10,6 +10,7 @@ public:
         // 血量随机在 20 到 24 之间
         : Enemy("疯狂地精", QRandomGenerator::global()->bounded(8, 11), ":/resources/images/enemies/mad_gremlin.png", parent) {
         setId("Mad_Gremlin");
+        setScaleFactor(1.2);
     }
     // ========================================================
     // 🟢 重写入场技能：此时 UI 已全部连接完毕，尽情广播吧！

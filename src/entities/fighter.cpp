@@ -12,6 +12,8 @@ Fighter::Fighter(const QString& name, int maxHp, QObject* parent)
 void Fighter::takeDamage(int amount) {
     if (m_isDead || amount <= 0) return;
 
+    emit animationTakeDamage();
+
     // 优先扣除护甲
     if (m_block > 0) {
         if (m_block >= amount) {

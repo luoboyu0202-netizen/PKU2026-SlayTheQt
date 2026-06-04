@@ -174,10 +174,10 @@ void BattleView::bindEngine(BattleEngine* engine) {
 
         connect(enemyLogic, &Enemy::died, this, [this, enemyItem]() {
             m_enemyItems.removeOne(enemyItem);
-            if (enemyItem->scene()) {
-                m_scene->removeItem(enemyItem);
-            }
-            enemyItem->deleteLater();
+            // if (enemyItem->scene()) {
+            //     m_scene->removeItem(enemyItem);
+            // }
+            // enemyItem->deleteLater();
         });
     }
 
@@ -273,10 +273,10 @@ void BattleView::bindEngine(BattleEngine* engine) {
 
         connect(newEnemy, &Enemy::died, this, [this, newItem]() {
             m_enemyItems.removeOne(newItem);
-            if (newItem->scene()) {
-                m_scene->removeItem(newItem);
-            }
-            newItem->deleteLater();
+            // if (newItem->scene()) {
+            //     m_scene->removeItem(newItem);
+            // }
+            // newItem->deleteLater();
         });
 
         newItem->setScale(0.1);

@@ -5,52 +5,53 @@
 #include <QPen>
 #include <QPropertyAnimation>
 #include <QPixmap> // 别忘了包含图片类头文件喵！
+#include <QParallelAnimationGroup>
+#include <QGraphicsColorizeEffect>
 
 PlayerItem::PlayerItem(Player* logicPlayer, QGraphicsItem* parent)
     : QGraphicsObject(parent), m_logicPlayer(logicPlayer) {
 
-    // 1. 🔴【新核心】：在构造函数里，加载主角的帅气图片！
-    // 假设你把铁甲战士的图片放在了项目资源路径 ":/images/player/ironclad.png" 喵！
-    // 请务必确保这里的路径是你实际放入资源文件的路径喵！
-    if (!m_playerPixmap.load(":resources/images/ironclad.png")) {
+    // 1. 🔴 开启像素级缓存（性能优化必备！）
+    this->setCacheMode(QGraphicsItem::DeviceCoordinateCache);
+
+    // 2. 加载主角的帅气图片！
+    // 💡 顺手做一下分辨率优化，强制缩放一下防止原图太大吃内存！
+    QPixmap originalPixmap(":/resources/images/ironclad.png");
+    if (!originalPixmap.isNull()) {
+        m_playerPixmap = originalPixmap.scaled(300, 300, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    } else {
         qDebug() << "[PlayerItem UI Error] Failed to load player pixmap! Check the path喵!";
     }
 
-    // 2. 初始化本地缓存数值
+    // 3. 初始化本地缓存数值
     m_hp = logicPlayer->getHp();
     m_maxHp = logicPlayer->getMaxHp();
     m_block = logicPlayer->getBlock();
 
-    // 🔴【神经连线 A】：监听血量变化，附赠超强果汁感的受击震动！
+    // ========================================================
+    // 🟢【神经连线 A】：只负责刷新数值，不再处理动画！
+    // ========================================================
     connect(logicPlayer, &Player::hpChanged, this, [this](int cur, int max) {
-        if (cur < m_hp) {
-            // 玩家掉血了！立刻触发向左抽搐震动动画
-            QPropertyAnimation* shake = new QPropertyAnimation(this, "x");
-            qreal baseX = this->x();
-            shake->setDuration(300); // 持续 0.3 秒
-            shake->setKeyValueAt(0, baseX);
-            shake->setKeyValueAt(0.2, baseX - 15); // 受击向左猛退
-            shake->setKeyValueAt(0.4, baseX + 15); // 向右反弹
-            shake->setKeyValueAt(0.6, baseX - 10);
-            shake->setKeyValueAt(0.8, baseX + 10);
-            shake->setKeyValueAt(1, baseX);        // 归位
-            shake->start(QAbstractAnimation::DeleteWhenStopped);
-        }
         m_hp = cur; m_maxHp = max;
         update(); // 申请重画
     });
 
-    // 🔴【神经连线 B】：监听格挡变化
     connect(logicPlayer, &Player::blockChanged, this, [this](int blk) {
         m_block = blk;
         update();
     });
 
-    // 🔴【神经连线 C】：接通状态背包！全自动管理增益/减益图标
+    // ========================================================
+    // 💥【全新神经连线 B】：统一接管受击震动！(无论掉血还是掉甲都会触发)
+    // ========================================================
+    connect(logicPlayer, &Fighter::animationTakeDamage, this, &PlayerItem::playHitAnimation);
+
+    // ========================================================
+    // 🟢【神经连线 C】：接通状态背包！全自动管理增益/减益图标
+    // ========================================================
     connect(logicPlayer->getStatusManager(), &StatusManager::statusChanged, this, [this](StatusType type, int amount) {
         if (amount > 0) {
             if (!m_statusIcons.contains(type)) {
-                // 图标跟着主角移动震动
                 StatusIconItem* newIcon = new StatusIconItem(type, amount, this);
                 m_activeStatusList.append(type);
                 m_statusIcons.insert(type, newIcon);
@@ -67,6 +68,56 @@ PlayerItem::PlayerItem(Player* logicPlayer, QGraphicsItem* parent)
         }
         layoutStatusIcons(); // 呼叫排版
     });
+
+    // ========================================================
+    // 🗡️【全新神经连线 D】：接通出招指令，让主角往前扑！
+    // ========================================================
+    connect(logicPlayer, &Fighter::animationAction, this, &PlayerItem::playActionAnimation);
+
+    // ========================================================
+    // 💀【全新神经连线 E】：接通阵亡宣告！
+    // ========================================================
+    connect(m_logicPlayer, &Fighter::died, this, [this](Fighter*) {
+        playDeathAnimation();
+    });
+
+}
+
+// ========================================================
+// 💥 动画魔法 1：受击震动 (Hit Shake)
+// ========================================================
+void PlayerItem::playHitAnimation() {
+    QPropertyAnimation* shake = new QPropertyAnimation(this, "pos");
+    shake->setDuration(250);
+
+    QPointF startPos = this->pos();
+
+    // 主角在左边，受击时向左边（后方）猛退！
+    shake->setKeyValueAt(0.0, startPos);
+    shake->setKeyValueAt(0.2, startPos + QPointF(-15, 0));
+    shake->setKeyValueAt(0.4, startPos + QPointF(15, 0));
+    shake->setKeyValueAt(0.6, startPos + QPointF(-10, 0));
+    shake->setKeyValueAt(0.8, startPos + QPointF(10, 0));
+    shake->setKeyValueAt(1.0, startPos);
+
+    shake->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+// ========================================================
+// 🗡️ 动画魔法 2：出招前扑 (Action Pounce)
+// ========================================================
+void PlayerItem::playActionAnimation() {
+    QPropertyAnimation* pounce = new QPropertyAnimation(this, "pos");
+    pounce->setDuration(300);
+
+    QPointF startPos = this->pos();
+
+    // 🔴 核心区别：主角站在左边，打人时应该向右冲刺（+40像素）！
+    pounce->setKeyValueAt(0.0, startPos);
+    pounce->setKeyValueAt(0.3, startPos + QPointF(40, 0)); // 猛烈右扑！
+    pounce->setKeyValueAt(1.0, startPos);
+
+    pounce->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 QRectF PlayerItem::boundingRect() const {
@@ -178,4 +229,63 @@ void PlayerItem::layoutStatusIcons() {
 
         icon->setPos(startX + (i * 36), startY);
     }
+}
+
+// ========================================================
+// 💀 动画魔法 3：主角阵亡 (Darken & Corpse)
+// ========================================================
+void PlayerItem::playDeathAnimation() {
+    qDebug() << "[🩻 动画诊断] 主角死亡动画正式启动！";
+
+    // 🔴 必须关掉缓存，否则变黑滤镜会失效，导致画面静止！
+    this->setCacheMode(QGraphicsItem::NoCache);
+
+    QParallelAnimationGroup* deathGroup = new QParallelAnimationGroup(this);
+
+    // [子动画 A]：不甘的剧烈颤抖
+    QPropertyAnimation* shake = new QPropertyAnimation(this, "pos");
+    shake->setDuration(800); // 主角死得比较慢，演出时间拉长
+    QPointF startPos = this->pos();
+    shake->setKeyValueAt(0.0, startPos);
+    shake->setKeyValueAt(0.25, startPos + QPointF(-15, 5));
+    shake->setKeyValueAt(0.5, startPos + QPointF(15, -5));
+    shake->setKeyValueAt(0.75, startPos + QPointF(-10, 10));
+    shake->setKeyValueAt(1.0, startPos);
+
+    // [子动画 B]：生命流逝，逐渐变黑
+    // 利用 Qt 强大的着色器，把主角的颜色逐渐染成纯黑！
+    QGraphicsColorizeEffect* colorEffect = new QGraphicsColorizeEffect(this);
+    colorEffect->setColor(Qt::black);
+    colorEffect->setStrength(0.0); // 初始完全不黑
+    this->setGraphicsEffect(colorEffect);
+
+    QPropertyAnimation* darken = new QPropertyAnimation(colorEffect, "strength");
+    darken->setDuration(800);
+    darken->setStartValue(0.0);
+    darken->setEndValue(1.0); // 最终强度为 1.0（彻底变黑）
+
+    deathGroup->addAnimation(shake);
+    deathGroup->addAnimation(darken);
+
+    // 💀 终局：抖动和变黑结束后，切图！
+    connect(deathGroup, &QParallelAnimationGroup::finished, this, [this, colorEffect]() {
+        // 1. 移除着色器（以便我们能看清尸体的原本颜色，或者你也可以不移除，让尸体保持灰暗）
+        this->setGraphicsEffect(nullptr);
+
+        // 2. 加载主角倒地的贴图！
+        // 💡 记得在你的 resources 文件夹里塞一张 ironclad_corpse.png 喵！
+        QPixmap corpsePixmap(":/resources/images/ironclad_corpse.png");
+        if (!corpsePixmap.isNull()) {
+            m_playerPixmap = corpsePixmap.scaled(300, 300, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
+
+        // 3. 隐藏所有状态图标（人死如灯灭）
+        for (StatusIconItem* icon : m_statusIcons.values()) {
+            icon->hide();
+        }
+
+        update(); // 刷新画布，展示冰冷的尸体
+    });
+
+    deathGroup->start(QAbstractAnimation::DeleteWhenStopped);
 }

@@ -8,6 +8,7 @@ public:
     explicit FatGremlin(QObject* parent = nullptr)
         : Enemy("胖地精", QRandomGenerator::global()->bounded(9, 13), ":/resources/images/enemies/fat_gremlin.png", parent) {
         setId("Fat_Gremlin");
+        setScaleFactor(1.2);
     }
 
     void rollNextIntent() override {

@@ -128,6 +128,15 @@ void StatusManager::tickEndOfTurnStatuses() {
         // 2. 镣铐是一次性的，用完当场粉碎！
         clearStatus(StatusType::Shackled);
     }
+
+    if (m_statuses.contains(StatusType::Ritual) && m_statuses[StatusType::Ritual] > 0) {
+        int ritualAmount = m_statuses[StatusType::Ritual];
+
+        // 咔咔！力量暴涨！
+        applyStatus(StatusType::Strength, ritualAmount);
+        qDebug() << "[Status] 咔咔！仪式生效！目标获得了" << ritualAmount << "点力量喵！";
+    }
+
 }
 
 
