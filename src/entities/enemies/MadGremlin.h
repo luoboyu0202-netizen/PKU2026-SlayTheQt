@@ -8,7 +8,7 @@ class MadGremlin : public Enemy {
 public:
     explicit MadGremlin(QObject* parent = nullptr)
         // 血量随机在 20 到 24 之间
-        : Enemy("疯狂地精", QRandomGenerator::global()->bounded(20, 25), ":/resources/images/enemies/mad_gremlin.png", parent) {
+        : Enemy("疯狂地精", QRandomGenerator::global()->bounded(8, 11), ":/resources/images/enemies/mad_gremlin.png", parent) {
         setId("Mad_Gremlin");
     }
     // ========================================================

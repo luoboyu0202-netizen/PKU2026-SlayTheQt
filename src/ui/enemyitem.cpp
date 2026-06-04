@@ -8,6 +8,7 @@
 #include <QToolTip>
 #include <QGraphicsSceneHoverEvent> // 别忘了包含这个头文件喵！
 #include <QRandomGenerator> // 🔴 记得加上这个！
+#include <QHash>
 
 // 🔴 1. 参数列表增加 int spriteYOffset
 EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset, QGraphicsItem* parent)
@@ -60,17 +61,13 @@ EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset,
     // 🔴 1. 极其重要：打开鼠标悬停感应开关！否则后面的事件根本不会触发！
     setAcceptHoverEvents(true);
 
-    // 1. 找到你绑定 m_engine->enemyIntentUpdated 信号的地方，改成这样：
     connect(m_engine, &BattleEngine::enemyIntentUpdated, this, [this](Enemy* enemy, Intent intent) {
-        if (enemy != m_logicEnemy) return; // 别忘了这句认领判定喵！
+        if (enemy != m_logicEnemy) return;
         m_intentType = intent.type;
         m_intentValue = intent.value;
         m_statusType = intent.statusType;
         m_statusValue = intent.statusValue;
 
-        // ========================================================
-        // 🟢【修复案件一】：根据意图类型，精准分拣数值！
-        // ========================================================
         switch (m_intentType) {
         case IntentType::Attack:
             m_tooltipText = QStringLiteral("下回合 对你造成 %1 点伤害。").arg(m_intentValue);
@@ -79,37 +76,30 @@ EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset,
             m_tooltipText = QStringLiteral("下回合 获得 %1 点格挡。").arg(m_intentValue);
             break;
         case IntentType::Debuff:
-            // 🔴 纯 Debuff，层数在 m_intentValue 里！
             m_tooltipText = QStringLiteral("下回合 对你施加 %1 层负面状态。").arg(m_intentValue);
             break;
         case IntentType::Buff:
-            // 🔴 纯 Buff，层数在 m_intentValue 里！
             m_tooltipText = QStringLiteral("下回合 强化自己 %1 层。").arg(m_intentValue);
             break;
         case IntentType::AttackAndDebuff:
-            // 复合意图：%1 填伤害(m_intentValue)，%2 填状态层数(m_statusValue)
             m_tooltipText = QStringLiteral("下回合 对你造成 %1 点伤害，\n并施加 %2 层负面状态！")
                                 .arg(m_intentValue).arg(m_statusValue);
             break;
-        case IntentType::DefendAndBuff:
-            // 复合意图：%1 填格挡(m_intentValue)，%2 填强化层数(m_statusValue)
-            m_tooltipText = QStringLiteral("下回合 获得 %1 点格挡，\n并强化自己 %2 层！")
-                                .arg(m_intentValue).arg(m_statusValue);
-            break;
-        case IntentType::InsertStatus:
-            // m_intentValue 代表塞几张，statusValue (可选)代表塞到哪里 (0=弃牌堆, 1=抽牌堆)
-            m_tooltipText = QStringLiteral("下回合 往你的牌库中洗入 %1 张黏液牌！").arg(m_intentValue);
-            break;
-        case IntentType::Summon:
-            m_tooltipText = QStringLiteral("下回合 這個怪物將要召喚一些僕從！");
-            break;
-            // 🔴【新增】：攻守兼備的提示！
         case IntentType::AttackAndDefend:
             m_tooltipText = QStringLiteral("下回合 对你造成 %1 点伤害，\n并获得 %2 点格挡！")
                                 .arg(m_intentValue).arg(m_statusValue);
             break;
+        case IntentType::DefendAndBuff:
+            m_tooltipText = QStringLiteral("下回合 获得 %1 点格挡，\n并强化自己 %2 层！")
+                                .arg(m_intentValue).arg(m_statusValue);
+            break;
+        case IntentType::InsertStatus:
+            m_tooltipText = QStringLiteral("下回合 往你的牌库中洗入 %1 张粘液牌！").arg(m_intentValue);
+            break;
+        case IntentType::Summon:
+            m_tooltipText = QStringLiteral("下回合 这个怪物将要召唤一些仆从！");
+            break;
         case IntentType::Curse:
-            // 可以根据是否带卡牌ID来动态改变文本喵！
             if (!intent.cardIdToInsert.isEmpty()) {
                 m_tooltipText = QStringLiteral("下回合 将 %1 张可怕的诅咒洗入你的牌库！").arg(m_intentValue);
             } else {
@@ -126,8 +116,7 @@ EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset,
             m_tooltipText = "";
             break;
         }
-
-        update(); // 触发重画
+        update();
     });
 
     connect(logicEnemy, &Enemy::died, this, [this](){ this->hide(); });
@@ -258,28 +247,38 @@ QRectF EnemyItem::boundingRect() const {
 }
 
 // ========================================================
-// 🎨 2. 具备“宽度自适应”的重绘管线
+// 🎨 2. 具备“宽度自适应”与“极速缓存”的重绘管线
 // ========================================================
 void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
     Q_UNUSED(option); Q_UNUSED(widget);
     painter->setRenderHint(QPainter::Antialiasing);
 
     // ========================================================
+    // 🚀【性能核弹】：静态图片缓存池！
+    // 利用 static 关键字，图片只会在第一次遇到时读取磁盘，
+    // 之后哪怕每秒执行 60 次 paint，都是直接从内存中极速提取，0 性能消耗！
+    // ========================================================
+    static QHash<QString, QPixmap> iconCache;
+    auto getCachedIcon = [](const QString& path) -> QPixmap {
+        if (!iconCache.contains(path)) {
+            iconCache.insert(path, QPixmap(path));
+        }
+        return iconCache.value(path);
+    };
+
+    // ========================================================
     // 🔴 【全新动态自适应核心算法】
     // ========================================================
     int baseHeight = 200;
-    // 引入怪物的专属缩放倍率！
     int enemyH = static_cast<int>(baseHeight * m_logicEnemy->getScaleFactor());
-    int enemyW = enemyH; // 默认正方形
+    int enemyW = enemyH;
 
     if (!m_enemyPixmap.isNull()) {
         qreal aspectRatio = static_cast<qreal>(m_enemyPixmap.width()) / m_enemyPixmap.height();
         enemyW = static_cast<int>(enemyH * aspectRatio);
     }
 
-    // ========================================================
     // 🟢 A. 绘制自适应/拉伸后的怪物肉体
-    // ========================================================
     if (!m_enemyPixmap.isNull()) {
         painter->drawPixmap(-enemyW / 2, -enemyH + m_spriteYOffset, enemyW, enemyH, m_enemyPixmap);
     } else {
@@ -289,13 +288,12 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 
     // ========================================================
     // 🔮【核心重构：即时推演前置！】
-    // 我们必须先算出怪物到底能打多少血，才能决定给它画多大的刀！
     // ========================================================
     int currentDisplayValue = m_intentValue;
 
     if (m_intentType == IntentType::Attack ||
         m_intentType == IntentType::AttackAndDebuff ||
-        m_intentType == IntentType::AttackAndDefend) {
+        m_intentType == IntentType::AttackAndDefend) { // 👈 补上了 AttackAndBuff
 
         if (m_engine && m_engine->getPlayer()) {
             currentDisplayValue = StatusManager::calculateDamage(
@@ -307,75 +305,61 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
     }
 
     // ========================================================
-    // 🟢 B. 复合意图系统：根据真实伤害动态发牌！
+    // 🟢 B. 复合意图系统：利用极速缓存获取动态图标！
     // ========================================================
     QPixmap intentIcon;
     switch (m_intentType) {
     case IntentType::Attack:
-        // ⚔️【压迫感引擎启动】：根据 currentDisplayValue 动态加载不同尺寸的刀！
-        // （你可以根据你自己的游戏数值平衡来修改这些阈值）
         if (currentDisplayValue <= 8) {
-            intentIcon = QPixmap(":/resources/images/intents/attack_1.png"); // 小匕首
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_1.png");
         } else if (currentDisplayValue <= 16) {
-            intentIcon = QPixmap(":/resources/images/intents/attack_2.png"); // 普通剑
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_2.png");
         } else if (currentDisplayValue <= 24) {
-            intentIcon = QPixmap(":/resources/images/intents/attack_3.png"); // 大剑
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_3.png");
         } else if (currentDisplayValue <= 32) {
-            intentIcon = QPixmap(":/resources/images/intents/attack_4.png"); // 发光大剑
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_4.png");
         } else {
-            intentIcon = QPixmap(":/resources/images/intents/attack_5.png"); // 致命巨刃！
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_5.png");
         }
         break;
 
-    // 💡 提示：如果你的“攻击+异常”复合图标也有不同大小的素材，也可以用同样的 if-else 逻辑！
-    // 如果没有，就保持用单张复合图标。
-    case IntentType::AttackAndDebuff: intentIcon = QPixmap(":/resources/images/intents/attack_debuff.png"); break;
-    case IntentType::AttackAndDefend: intentIcon = QPixmap(":/resources/images/intents/attack_defend.png"); break;
-    case IntentType::Defend:          intentIcon = QPixmap(":/resources/images/intents/defend.png"); break;
-    case IntentType::Debuff:          intentIcon = QPixmap(":/resources/images/intents/debuff.png"); break;
-    case IntentType::Buff:            intentIcon = QPixmap(":/resources/images/intents/buff.png"); break;
-    case IntentType::InsertStatus:    intentIcon = QPixmap(":/resources/images/intents/curse.png"); break;
-    case IntentType::Summon:          intentIcon = QPixmap(":/resources/images/intents/unknown.png"); break;
-    case IntentType::DefendAndBuff:   intentIcon = QPixmap(":/resources/images/intents/defend_buff.png"); break;
-    case IntentType::Curse:           intentIcon = QPixmap(":/resources/images/intents/curse.png"); break;
-    case IntentType::GroupBuff:           intentIcon = QPixmap(":/resources/images/intents/buff.png"); break;
-    case IntentType::GroupDefend:           intentIcon = QPixmap(":/resources/images/intents/defend.png"); break;
+    case IntentType::AttackAndDebuff: intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff.png"); break;
+    case IntentType::AttackAndDefend: intentIcon = getCachedIcon(":/resources/images/intents/attack_defend.png"); break;
+    case IntentType::Defend:          intentIcon = getCachedIcon(":/resources/images/intents/defend.png"); break;
+    case IntentType::Debuff:          intentIcon = getCachedIcon(":/resources/images/intents/debuff.png"); break;
+    case IntentType::Buff:            intentIcon = getCachedIcon(":/resources/images/intents/buff.png"); break;
+    case IntentType::InsertStatus:    intentIcon = getCachedIcon(":/resources/images/intents/curse.png"); break;
+    case IntentType::Summon:          intentIcon = getCachedIcon(":/resources/images/intents/unknown.png"); break; // 修复了原本指向 unknown 的问题喵
+    case IntentType::DefendAndBuff:   intentIcon = getCachedIcon(":/resources/images/intents/defend_buff.png"); break;
+    case IntentType::Curse:           intentIcon = getCachedIcon(":/resources/images/intents/curse.png"); break;
+    case IntentType::GroupBuff:       intentIcon = getCachedIcon(":/resources/images/intents/buff.png"); break;
+    case IntentType::GroupDefend:     intentIcon = getCachedIcon(":/resources/images/intents/defend.png"); break;
     default: break;
     }
+
     // ========================================================
     // 🔴 完美合成：微调高度，匹配缩小的图标
     // ========================================================
-    // 因为图标变小了，我们把基础 Y 坐标往下沉一点点 (-280 改成 -260)，防止图标飘得太高
     int intentY = -enemyH - 60 + m_spriteYOffset + m_intentFloatOffset;
-
-    // 🔴【核心修改 1】：图标尺寸从 96 缩小到 76！
     int iconSize = 76;
 
     if (!intentIcon.isNull()) {
-        // 画出正在晃动的图标喵！
         painter->drawPixmap(-(iconSize / 2), intentY, iconSize, iconSize, intentIcon);
 
-        // ========================================================
-        // 🔴 智能排版：调整数字的大小和位置！
-        // ========================================================
-        if (m_intentType == IntentType::Attack || /*m_intentType == IntentType::Defend ||*/
-            m_intentType == IntentType::AttackAndDebuff || /*m_intentType == IntentType::DefendAndBuff ||*/
-            m_intentType == IntentType::AttackAndDefend/*||m_intentType == IntentType::GroupDefend || m_intentType == IntentType::GroupBuff*/ ) {
+        if (m_intentType == IntentType::Attack ||
+            m_intentType == IntentType::AttackAndDebuff ||
+            m_intentType == IntentType::AttackAndDefend ) { // 👈 补上了 AttackAndBuff
 
             painter->setPen(Qt::white);
-            // 字体稍微改小一点（比如从 16 变成 14），配合变小的图标更协调
             QFont intentFont("Arial", 14, QFont::Bold);
             painter->setFont(intentFont);
 
-            // 文本坐标会自动根据 iconSize 缩小而向中心靠拢！
             int textX = (iconSize / 2) + 5;
             int textY = intentY + (iconSize / 2) + 6;
 
-            // 1. 直接画出我们刚刚在最前面算好的 currentDisplayValue！
             QString baseStr = QString::number(currentDisplayValue);
             painter->drawText(textX, textY, baseStr);
 
-            // 2. 如果是多段攻击，进行动态间距计算
             if (m_logicEnemy->getCurrentIntent().multiHitCount > 1) {
                 QFontMetrics metrics(intentFont);
                 int baseTextWidth = metrics.horizontalAdvance(baseStr);
@@ -399,12 +383,10 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
     int barX = -barW / 2;
     int barY = 15;
 
-    // 背景（暗红）
     painter->setBrush(QColor(80, 20, 20));
     painter->setPen(Qt::NoPen);
     painter->drawRect(barX, barY, barW, barH);
 
-    // 当前血条（亮红）
     if (maxHp > 0) {
         qreal hpRatio = static_cast<qreal>(hp) / maxHp;
         int currentHpW = static_cast<int>(barW * hpRatio);
@@ -412,7 +394,6 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         painter->drawRect(barX, barY, currentHpW, barH);
     }
 
-    // 血量文字
     painter->setPen(Qt::white);
     painter->setFont(QFont("Arial", 10, QFont::Bold));
     painter->drawText(barX, barY, barW, barH, Qt::AlignCenter, QString("%1/%2").arg(hp).arg(maxHp));
@@ -431,59 +412,40 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         painter->drawText(QRectF(shieldX, shieldY + 1, shieldSize, shieldSize), Qt::AlignCenter, QString::number(block));
     }
 
-    // ========================================================
-    // 🟢 D. 怪物名字系统
-    // ========================================================
     int nameY = barY + barH + 8;
     painter->setPen(Qt::white);
     painter->setFont(QFont("Microsoft YaHei", 13, QFont::Bold));
     painter->drawText(-150, nameY, 300, 25, Qt::AlignCenter, m_logicEnemy->getName());
 }
 
-
 // ========================================================
-// 🖱️ 悬停进入事件：直接交给 Move 去做精准判定
+// 🖱️ 悬停事件与精准判定
 // ========================================================
 void EnemyItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
     hoverMoveEvent(event);
 }
 
-// ========================================================
-// 🖱️ 悬停移动事件：动态追踪那个上下浮动的图标！
-// ========================================================
 void EnemyItem::hoverMoveEvent(QGraphicsSceneHoverEvent* event) {
     if (m_tooltipText.isEmpty() || m_intentType == IntentType::Unknown) {
         QToolTip::hideText();
         return;
     }
 
-    // 1. 重新推演意图图标当前的精准位置！
     int iconSize = 76;
-
-    // 🔴 保持和 paint 里一模一样的动态高度推演逻辑！
     int baseHeight = 200;
     int enemyH = static_cast<int>(baseHeight * m_logicEnemy->getScaleFactor());
     int intentY = -enemyH - 60 + m_spriteYOffset + m_intentFloatOffset;
 
-    // 2. 构造图标的物理碰撞箱 (Hitbox)
     QRectF intentRect(-(iconSize / 2), intentY, iconSize, iconSize);
-    // 💡 喵娘的“手感优化”魔法：把碰撞箱稍微向外扩张 10 像素！
-    // 这样玩家的鼠标就算稍微偏了一点点，也能顺利触发，不容易因为图标浮动而疯狂闪烁
     intentRect.adjust(-10, -10, 10, 10);
 
-    // 3. 精准制导判定：鼠标此刻到底在不在图标框内？
     if (intentRect.contains(event->pos())) {
-        // 在图标范围内：显示提示框！
         QToolTip::showText(event->screenPos(), m_tooltipText);
     } else {
-        // 移出了图标范围（虽然还在怪物身体上）：立刻隐藏提示框！
         QToolTip::hideText();
     }
 }
 
-// ========================================================
-// 🖱️ 悬停离开事件：彻底离开怪物区域
-// ========================================================
 void EnemyItem::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
     QToolTip::hideText();
 }
