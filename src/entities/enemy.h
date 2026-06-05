@@ -21,6 +21,7 @@ enum class IntentType {
     InsertStatus,    // 给你牌库或手牌塞状态牌！
     Summon,           // 召唤小怪加入战场！
     Curse,
+    AttackAndInsertStatus,
     GroupBuff,       // 全体强化（给所有活着的怪物加力量等）
     GroupDefend      // 全体叠甲（盾地精等辅助怪专属）
 };

@@ -48,6 +48,8 @@ SOURCES += \
     src/ui/events/DesignerView.cpp \
     src/ui/events/SelfNoteView.cpp \
     src/ui/events/GoldenWingView.cpp \
+    src/ui/events/WorldOfGoopView.cpp \
+    src/ui/events/SsssserpentView.cpp \
     src/ui/events/GenericChoiceEventView.cpp \
     src/ui/events/EventOptionButton.cpp \
 #    src/ui/events/ShopCardItem.cpp \
@@ -95,6 +97,8 @@ HEADERS += \
     src/entities/enemies/Cultist.h \
     src/entities/enemies/FatGremlin.h \
     src/entities/enemies/GremlinLeader.h \
+    src/entities/enemies/HexaFlameItem.h \
+    src/entities/enemies/Hexaghost.h \
     src/entities/enemies/JawWorm.h \
     src/entities/enemies/MadGremlin.h \
     src/entities/enemies/ShieldGremlin.h \
@@ -158,6 +162,8 @@ HEADERS += \
     src/ui/events/DesignerView.h \
     src/ui/events/SelfNoteView.h \
     src/ui/events/GoldenWingView.h \
+    src/ui/events/WorldOfGoopView.h \
+    src/ui/events/SsssserpentView.h \
     src/ui/events/GenericChoiceEventView.h \
     src/ui/events/EventOptionButton.h \
 #    src/ui/events/ShopCardItem.h \

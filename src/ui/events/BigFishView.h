@@ -8,7 +8,7 @@ public:
                          RelicManager* relicManager, QWidget* parent = nullptr);
 
 protected:
-    void setupContent();
+    void setupContent() override;
 
 private:
     void onBananaChosen();

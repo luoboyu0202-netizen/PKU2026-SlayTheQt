@@ -22,6 +22,7 @@ public:
     EventBaseView* getView() const { return m_view; }
     Player* getPlayer() const { return m_player; }
     RelicManager* getRelicManager() const { return m_relicManager; }
+    CardManager* getCardManager() const { return m_cardManager; }
 
 signals:
     void eventConcluded(EventResult result);

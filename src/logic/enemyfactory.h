@@ -19,6 +19,7 @@
 #include "enemies/WizardGremlin.h"
 #include "enemies/GremlinLeader.h"
 #include "enemies/Cultist.h"
+#include "enemies/Hexaghost.h"
 
 class EnemyFactory {
 public:
@@ -29,7 +30,7 @@ public:
         QString encounterId;
 
         if (nodeType == NodeType::Boss) {
-            QStringList bossPool = {"Slime_Boss"};
+            QStringList bossPool = {"Hexaghost_Encounter"};
             encounterId = bossPool[QRandomGenerator::global()->bounded(bossPool.size())];
         }
         else if (nodeType == NodeType::Elite) {
@@ -112,6 +113,10 @@ public:
             Enemy* cultist = createEnemy("Cultist");
             cultist->setSlotIndex(2); // 稳坐屏幕 C 位
             squad << cultist;
+        }else if (encounterId == "Hexaghost_Encounter") {
+            Enemy* hexaghost = createEnemy("Hexaghost");
+            hexaghost->setSlotIndex(2); // 绝对的压迫感，独占 2号 C位！
+            squad << hexaghost;
         }
 
         return squad;
@@ -132,6 +137,7 @@ public:
         if (enemyId == "Wizard_Gremlin") return new WizardGremlin();
         if (enemyId == "Gremlin_Leader") return new GremlinLeader();
         if (enemyId == "Cultist") return new Cultist();
+        if (enemyId == "Hexaghost") return new Hexaghost();
 
         // ========================================================
         // 🎁 盲盒解析系统：当收到 "Random_Gremlin" 指令时，随机吐出一只！

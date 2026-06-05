@@ -11,6 +11,8 @@
 #include <QHash>
 #include <QParallelAnimationGroup>
 #include <QGraphicsOpacityEffect>
+#include "enemies/HexaFlameItem.h"// 🔴 加上这句！把六火亡魂的火焰图纸拿过来！
+#include <cmath>           // 确保有数学库算坐标喵！
 
 // 🔴 1. 参数列表增加 int spriteYOffset
 EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset, QGraphicsItem* parent)
@@ -112,6 +114,10 @@ EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset,
         case IntentType::GroupDefend:
             m_tooltipText = QStringLiteral("下回合 给予所有敌方单位 %1 点格挡！").arg(m_intentValue);
             break;
+        case IntentType::AttackAndInsertStatus:
+            m_tooltipText = QStringLiteral("下回合 对你造成 %1 点伤害，\n并将 %2 张状态牌洗入弃牌堆！")
+                                .arg(m_intentValue).arg(m_statusValue);
+            break;
         default:
             m_tooltipText = "";
             break;
@@ -210,6 +216,18 @@ EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset,
 
         // 只要怪物状态变了（比如吃到了镣铐），立刻触发重绘！
         this->update();
+
+        // ========================================================
+        // 🔮 监听点火协议：大管家只要一修改状态，这里立刻点火！
+        // ========================================================
+        if (type == StatusType::HexaLevel && m_hexaFlames.size() == 6) {
+            for (int i = 0; i < 6; ++i) {
+                // 如果当前索引小于拥有的层数，则点燃它！
+                // 比如 amount = 2，那么 0 号位和 1 号位就会爆燃！
+                m_hexaFlames[i]->setIgnited(i < amount);
+            }
+        }
+
     });
 
     // 💡 额外保险：如果你想让怪物在主角挂上易伤时，意图数字也跟着暴涨，
@@ -218,6 +236,33 @@ EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset,
     connect(m_logicEnemy, &Fighter::died, this, [this](Fighter*) {
         playDeathAnimation();
     });
+
+    // ========================================================
+    // 🔮【极坐标法阵】：如果当前怪物是六火亡魂，布置六团冥火！
+    // ========================================================
+    if (m_logicEnemy->getId() == "Hexaghost") {
+        int radius = 140; // 火焰环绕的半径，可根据你 Boss 贴图的实际大小微调
+
+        for (int i = 0; i < 6; ++i) {
+            HexaFlameItem* flame = new HexaFlameItem(this);
+
+            // 1. 计算角度：从正上方（-90度）开始，顺时针每 60 度一个
+            double angleDeg = -120.0 + (i * 60.0);
+
+            // 2. 角度转弧度 (极坐标核心公式)
+            double angleRad = angleDeg * M_PI / 180.0;
+
+            // 3. 映射到直角坐标系 (x = r*cosθ, y = r*sinθ)
+            double fx = radius * std::cos(angleRad);
+            // 减去 m_spriteYOffset 确保火焰阵列和 Boss 肉体在同一个水平高度
+            double fy = radius * std::sin(angleRad) - m_spriteYOffset - 100;
+
+            flame->setPos(fx, fy-40);
+            // 这里我们把生成的指针存进一个 QList<HexaFlameItem*> m_hexaFlames 里
+            // 🔴 记得在 EnemyItem.h 的 private: 里加上 QList<HexaFlameItem*> m_hexaFlames;
+            m_hexaFlames.append(flame);
+        }
+    }
 }
 
 
@@ -300,7 +345,8 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 
     if (m_intentType == IntentType::Attack ||
         m_intentType == IntentType::AttackAndDebuff ||
-        m_intentType == IntentType::AttackAndDefend) { // 👈 补上了 AttackAndBuff
+        m_intentType == IntentType::AttackAndDefend||
+        m_intentType ==IntentType::AttackAndInsertStatus) { // 👈 补上了 AttackAndBuff
 
         if (m_engine && m_engine->getPlayer()) {
             currentDisplayValue = StatusManager::calculateDamage(
@@ -346,6 +392,34 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         }
         break;
 
+    case IntentType::AttackAndInsertStatus:
+        if (currentDisplayValue <= 5) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_1.png");
+        } else if (currentDisplayValue <= 10) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_2.png");
+        } else if (currentDisplayValue <= 15) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_3.png");
+        } else if (currentDisplayValue <= 20) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_4.png");
+        } else if (currentDisplayValue <= 25) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_5.png");
+        }
+        break;
+
+    case IntentType::AttackAndDebuff:
+        if (currentDisplayValue <= 5) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_1.png");
+        } else if (currentDisplayValue <= 10) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_2.png");
+        } else if (currentDisplayValue <= 15) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_3.png");
+        } else if (currentDisplayValue <= 20) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_4.png");
+        } else if (currentDisplayValue <= 25) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_5.png");
+        }
+        break;
+
     case IntentType::AttackAndDefend:
         if (currentDisplayValue <= 5) {
             intentIcon = getCachedIcon(":/resources/images/intents/attack_defend_1.png");
@@ -357,6 +431,7 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
             intentIcon = getCachedIcon(":/resources/images/intents/attack_defend_4.png");
         }
         break;
+        
     case IntentType::Defend:          intentIcon = getCachedIcon(":/resources/images/intents/defend.png"); break;
     case IntentType::Debuff:          intentIcon = getCachedIcon(":/resources/images/intents/debuff.png"); break;
     case IntentType::Buff:            intentIcon = getCachedIcon(":/resources/images/intents/buff.png"); break;
@@ -380,7 +455,8 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 
         if (m_intentType == IntentType::Attack ||
             m_intentType == IntentType::AttackAndDebuff ||
-            m_intentType == IntentType::AttackAndDefend ) { // 👈 补上了 AttackAndBuff
+            m_intentType == IntentType::AttackAndDefend||
+            m_intentType ==IntentType::AttackAndInsertStatus            ) { // 👈 补上了 AttackAndBuff
 
             painter->setPen(Qt::white);
             QFont intentFont("Arial", 14, QFont::Bold);

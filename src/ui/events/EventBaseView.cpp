@@ -63,6 +63,10 @@ QPointF EventBaseView::leaveButtonPos() const {
     return QPointF(1650, 920);
 }
 
+void EventBaseView::setupContent() {
+    // Default implementation does nothing
+}
+
 void EventBaseView::setLeaveButtonVisible(bool visible) {
     if (m_leaveBtn) {
         m_leaveBtn->setVisible(visible);

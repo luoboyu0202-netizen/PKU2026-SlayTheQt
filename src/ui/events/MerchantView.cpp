@@ -262,11 +262,10 @@ void MerchantView::mousePressEvent(QMouseEvent* event) {
 
     if (m_phase == Phase::Encounter) {
         // ========================================================
-        // 🎯 核心修復：縮小商人的隱形判定框 (Hitbox)！
-        // 原始：QRectF(1200, 420, 500, 650)
-        // 瘦身後：X 往右挪一點，寬高大幅度砍掉，讓出周圍的點擊空間！
+        // 🎯 商人判定框：避免与离开按钮重叠。
+        // 离开按钮的命中检测已由 LeaveButton::shape() 收紧。
         // ========================================================
-        QRectF merchantRect(1280, 470, 350, 500);
+        QRectF merchantRect(1280, 470, 350, 250);
         if (merchantRect.contains(scenePt)) {
             onMerchantClicked();
             return;
@@ -739,7 +738,7 @@ void MerchantView::onRelicClicked(int index) {
     playPurchaseEffect(icon, center);
 
     // 3. 隱藏商店殘留物並刷新價格顯示
-    icon->hide();
+    m_scene->removeItem(icon);
     if (m_relicPriceTexts[index]) { m_scene->removeItem(m_relicPriceTexts[index]); delete m_relicPriceTexts[index]; m_relicPriceTexts[index] = nullptr; }
     if (m_relicNameTexts[index]) { m_scene->removeItem(m_relicNameTexts[index]); delete m_relicNameTexts[index]; m_relicNameTexts[index] = nullptr; }
     refreshAffordability();
@@ -759,19 +758,41 @@ void MerchantView::playPurchaseEffect(QGraphicsItem* item, const QPointF& center
     bool isRelic = (dynamic_cast<RelicItem*>(item) != nullptr);
 
     // ========================================================
-    // 🔮 魔法 1：跨次元結界！覆蓋在整個 GameWindow 之上
+    // 🔮 魔法 1：跨次元结界！覆盖在整个 GameWindow 之上
     // ========================================================
     QGraphicsView* fxView = new QGraphicsView(this->window());
-    fxView->resize(this->window()->size()); // 覆蓋 1600x900
+    fxView->resize(this->window()->size()); // 覆盖 1600x900
     fxView->setStyleSheet("background: transparent; border: none;");
     fxView->setAttribute(Qt::WA_TransparentForMouseEvents);
     fxView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     fxView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
+    // ❌ 已经彻底删除了极其耗性能的 FullViewportUpdate！
+
     QGraphicsScene* fxScene = new QGraphicsScene(0, 0, fxView->width(), fxView->height(), fxView);
     fxView->setScene(fxScene);
     fxView->show();
     fxView->raise(); // 🔴 絕對壓制，蓋過 TopBar！
+
+    // ========================================================
+    // 🔪 核心修复：精准脏矩形同步！
+    // 不再全屏刷新，而是让收回的手指“手把手”教透明结界哪里需要刷新！
+    // ========================================================
+    if (m_handAnimY) {
+        connect(m_handAnimY, &QVariantAnimation::valueChanged, fxView, [this, fxView]() {
+            if (m_handCursor && fxView->viewport()) {
+                // 1. 拿到手部在底层场景中的物理矩形大小
+                QRectF handRect = m_handCursor->sceneBoundingRect();
+
+                // 2. 将底层的坐标精准映射到顶层的 GameWindow 坐标系
+                QPoint topLeft = this->mapTo(this->window(), this->mapFromScene(handRect.topLeft()));
+                QPoint bottomRight = this->mapTo(this->window(), this->mapFromScene(handRect.bottomRight()));
+
+                // 3. 命令透明层：只刷新手指经过的这块长条形区域！
+                fxView->viewport()->update(QRect(topLeft, bottomRight));
+            }
+        });
+    }
 
     // ========================================================
     // 🗺️ 魔法 2：精準坐標轉換
@@ -815,9 +836,7 @@ void MerchantView::playPurchaseEffect(QGraphicsItem* item, const QPointF& center
     glowOrb->setPen(Qt::NoPen);
     glowOrb->setPos(startPos);
 
-    auto* blur = new QGraphicsBlurEffect();
-    blur->setBlurRadius(10);
-    glowOrb->setGraphicsEffect(blur);
+    // ❌ 已经彻底删除了 QGraphicsBlurEffect，径向渐变本身就足够平滑且性能极高！
     fxScene->addItem(glowOrb);
 
     struct TrailParticle { QGraphicsEllipseItem* dot; qreal dx, dy; int age; int life; };

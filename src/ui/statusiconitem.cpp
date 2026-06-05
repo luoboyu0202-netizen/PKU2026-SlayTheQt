@@ -115,6 +115,11 @@ QRectF StatusIconItem::boundingRect() const {
 
 void StatusIconItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
     // 1. 画底框（Buff 蓝框，Debuff 红框）
+
+    if (m_icon.isNull()) {
+        return;
+    }
+
     painter->setPen(m_isDebuff ? QPen(Qt::red, 2) : QPen(Qt::cyan, 2));
     painter->setBrush(QColor(0, 0, 0, 150)); // 半透明黑底
     painter->drawRect(boundingRect());
