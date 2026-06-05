@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
 
     GlobalSaveData* save = GlobalSaveData::getInstance();
     save->initNewGame();
-    save->gold = 999;
+    save->gold = 99;
 
 #if TEST_EVENT
     // ========================================================

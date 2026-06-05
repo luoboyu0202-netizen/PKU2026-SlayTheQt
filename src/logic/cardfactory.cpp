@@ -39,9 +39,9 @@
 QList<QString> CardFactory::getAllAvailableCardIds() {
     // 💡 注意：这里绝对不能放 "card_wound" 或 "card_slimed" 喵！
     return {
-        "card_strike",
-        "card_defend",
-        "card_bash",
+        // "card_strike",
+        // "card_defend",
+        // "card_bash",
         "card_burning_pact",
         "card_bloodletting",
         "card_thunderclap",

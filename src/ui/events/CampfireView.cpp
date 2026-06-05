@@ -482,7 +482,7 @@ void CampfireView::showCardSelector(const QList<Card*>& candidates) {
     m_cardSelectPrompt = new QGraphicsTextItem("选择一张卡牌升级");
     m_cardSelectPrompt->setDefaultTextColor(QColor(255, 230, 150));
     m_cardSelectPrompt->setFont(QFont("Microsoft YaHei", 28, QFont::Bold));
-    m_cardSelectPrompt->setZValue(160);
+    m_cardSelectPrompt->setZValue(300);
     m_scene->addItem(m_cardSelectPrompt);
     m_cardSelectPrompt->setPos(960 - m_cardSelectPrompt->boundingRect().width() / 2, 80);
 
@@ -515,14 +515,14 @@ void CampfireView::showCardSelector(const QList<Card*>& candidates) {
     }
 
     m_confirmBtn = new TextButton("确认升级", 200, 55);
-    m_confirmBtn->setPos(960 - 120, 960);
+    m_confirmBtn->setPos(1650, 940);
     m_confirmBtn->setZValue(160);
     m_confirmBtn->hide();
     m_scene->addItem(m_confirmBtn);
     connect(m_confirmBtn, &TextButton::clicked, this, &CampfireView::confirmUpgrade);
 
     m_cancelBtn = new TextButton("返回", 200, 55);
-    m_cancelBtn->setPos(960 + 120, 960);
+    m_cancelBtn->setPos(1400, 940);
     m_cancelBtn->setZValue(160);
     m_scene->addItem(m_cancelBtn);
     connect(m_cancelBtn, &TextButton::clicked, this, &CampfireView::cancelUpgrade);

@@ -39,7 +39,7 @@ public:
         }
         else {
             // 🎲 普怪池：把 Jaw_Worm 加进来了！
-            QStringList monsterPool = {"Slime_Squad", "Single_Slime", "Single_Cultist", "Single_Jaw_Worm"};
+            QStringList monsterPool = {"Single_Slime", "Single_Cultist", "Single_Jaw_Worm"};
             encounterId = monsterPool[QRandomGenerator::global()->bounded(monsterPool.size())];
         }
 
@@ -77,6 +77,8 @@ public:
             // 单只怪物：绝对的 C 位（1 号位，也就是视觉上的 2 号中心位）
             Enemy* boss = createEnemy("Slime_01");
             boss->setSlotIndex(2);
+            boss->setMaxHp(boss->getMaxHp()*0.75);
+            boss->setHp(boss->getMaxHp());
             squad << boss;
         }
         else if (encounterId == "Mad_Gremlin_Gang") {
