@@ -622,7 +622,7 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
         if (save->availableEvents.isEmpty()) {
             qDebug() << "🎲 事件袋已空，重新進貨洗牌！";
             save->availableEvents = {
-                "BigFish", "Cleric", "Designer", "SelfNote", "GoldenWing"
+                "BigFish", "Cleric", "Designer", "SelfNote", "GoldenWing", "WorldOfGoop", "Ssssserpent"
             };
         }
 
@@ -672,6 +672,7 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
             "Designer",          // 設計師
             "SelfNote",          // 牆上的洞
             "GoldenWing",        // 金神像
+            "WorldOfGoop",       // 黏液世界 (New!)
             "MonsterEncounter",  // 遭遇戰
             "MonsterEncounter"   // (故意多放一個怪物，模擬原版 10%~20% 踩雷機率喵！)
         };
@@ -705,18 +706,17 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
         // ========================================================
         // 🌟 魔法 3：攔截卡牌獲取 (如果有對應訊號)
         // ========================================================
-        // 假設你的 CardManager 有 cardAddedToDeck(Card* c) 訊號
-        /*
         if (launcher->getCardManager()) {
-            connect(launcher->getCardManager(), &CardManager::cardAddedToDeck, this, [this](Card* c) {
+            connect(launcher->getCardManager(), &CardManager::cardInsertedToDiscard, this, [this](Card* c) {
                 // 飛向右上角的計牌器！
+                // 由於是 1920 場景座標，起點定在中央 (960, 540)，終點定在右上角 (1400, 50)
+                // 注意：playLootMeteor 接收的是 QPoint (物理像素)，需要轉換或適配
+                // 這裡我們直接傳入大概位置
                 playLootMeteor(c->getImagePath(), QPoint(800, 450), QPoint(1400, 50), [this]() {
                     m_topBar->refreshDeckCount();
-                    // 可以加個震動音效！
                 });
             });
         }
-        */
 
         // ========================================================
         // 📡 接收器 1：纯文字事件界面

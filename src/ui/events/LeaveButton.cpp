@@ -48,6 +48,15 @@ QRectF LeaveButton::boundingRect() const {
     return QRectF(-100, -50, 200, 100);
 }
 
+QPainterPath LeaveButton::shape() const {
+    QPainterPath path;
+    // 判定框缩小到 80%，视觉图标大小不变
+    qreal w = m_width * 0.8;
+    qreal h = m_height * 0.8;
+    path.addRect(QRectF(-w/2, -h/2, w, h));
+    return path;
+}
+
 void LeaveButton::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
     Q_UNUSED(option); Q_UNUSED(widget);
     painter->setRenderHint(QPainter::Antialiasing);

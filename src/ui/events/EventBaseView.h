@@ -27,7 +27,7 @@ signals:
     void relicObtained(Relic* relic); // 🔴 新增：全域發放遺物訊號！
 
 protected:
-    void setupContent(); // 子类在此填充中央内容
+    virtual void setupContent(); // 子类在此填充中央内容
 
     void showDarkOverlay(const QString& text = "");
     void hideDarkOverlay();

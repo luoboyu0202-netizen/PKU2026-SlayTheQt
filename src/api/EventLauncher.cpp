@@ -5,7 +5,9 @@
 #include "../ui/events/DesignerView.h"
 #include "../ui/events/SelfNoteView.h"
 #include "../ui/events/GoldenWingView.h"
-#include "battlelauncher.h".h"
+#include "../ui/events/WorldOfGoopView.h"
+#include "../ui/events/SsssserpentView.h"
+#include "battlelauncher.h"
 #include "../logic/GlobalSaveData.h" // 🔴 引入唯一真神！
 #include "../logic/CardFactory.h"
 #include <QDebug>
@@ -74,6 +76,12 @@ void EventLauncher::launchQuestionMark(const EventContext& context) {
     }
     else if (context.eventSubtype == "GoldenWing") {
         m_view = new GoldenWingView(m_player, m_cardManager, m_relicManager);
+    }
+    else if (context.eventSubtype == "WorldOfGoop") {
+        m_view = new WorldOfGoopView(m_player, m_cardManager, m_relicManager);
+    }
+    else if (context.eventSubtype == "Ssssserpent") {
+        m_view = new SsssserpentView(m_player, m_cardManager, m_relicManager);
     }
     else if (context.eventSubtype == "MonsterEncounter" || context.eventSubtype.isEmpty()) {
         // ========================================================

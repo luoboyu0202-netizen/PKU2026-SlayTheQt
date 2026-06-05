@@ -16,7 +16,7 @@ public:
                           RelicManager* relicManager, QWidget* parent = nullptr);
 
 protected:
-    void setupContent();
+    void setupContent() override;
     // 拦截卡牌点击事件的过滤器
     bool eventFilter(QObject* obj, QEvent* event) override;
 

@@ -18,7 +18,7 @@ public:
                           RelicManager* relicManager, QWidget* parent = nullptr);
 
 protected:
-    void setupContent();
+    void setupContent() override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
 
