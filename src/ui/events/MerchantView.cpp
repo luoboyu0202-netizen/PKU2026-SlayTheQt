@@ -739,7 +739,7 @@ void MerchantView::onRelicClicked(int index) {
     playPurchaseEffect(icon, center);
 
     // 3. 隱藏商店殘留物並刷新價格顯示
-    icon->hide();
+    m_scene->removeItem(icon);
     if (m_relicPriceTexts[index]) { m_scene->removeItem(m_relicPriceTexts[index]); delete m_relicPriceTexts[index]; m_relicPriceTexts[index] = nullptr; }
     if (m_relicNameTexts[index]) { m_scene->removeItem(m_relicNameTexts[index]); delete m_relicNameTexts[index]; m_relicNameTexts[index] = nullptr; }
     refreshAffordability();
@@ -759,14 +759,17 @@ void MerchantView::playPurchaseEffect(QGraphicsItem* item, const QPointF& center
     bool isRelic = (dynamic_cast<RelicItem*>(item) != nullptr);
 
     // ========================================================
-    // 🔮 魔法 1：跨次元結界！覆蓋在整個 GameWindow 之上
+    // 🔮 魔法 1：跨次元结界！覆盖在整个 GameWindow 之上
     // ========================================================
     QGraphicsView* fxView = new QGraphicsView(this->window());
-    fxView->resize(this->window()->size()); // 覆蓋 1600x900
+    fxView->resize(this->window()->size()); // 覆盖 1600x900
     fxView->setStyleSheet("background: transparent; border: none;");
     fxView->setAttribute(Qt::WA_TransparentForMouseEvents);
     fxView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     fxView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    // 🔴【核心修复】：强制特效层每帧全屏刷新！拒绝任何底层画面的残留！
+    fxView->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 
     QGraphicsScene* fxScene = new QGraphicsScene(0, 0, fxView->width(), fxView->height(), fxView);
     fxView->setScene(fxScene);
