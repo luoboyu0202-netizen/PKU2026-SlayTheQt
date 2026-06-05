@@ -38,6 +38,11 @@ public:
 private slots:
     // 🎬【队友新增】：处理开始界面的黑场转场动画
     void handleStartGameTransition();
+    // ==========================================
+    // 💾 【新增】：处理读档和存档退出的转场
+    // ==========================================
+    void handleContinueGameTransition(); // 接收 TitleView 的读档开局
+    void handleReturnToTitle();          // 接收 TopBar 的保存并退出
 
     // 接收地图的“开战”请求
     void onMapNodeClicked(const MapNode& node);
@@ -77,4 +82,7 @@ private:
     QWidget* m_curtain;                      // 物理黑幕
     QGraphicsOpacityEffect* m_curtainEffect; // 控制黑幕透明度的魔法
     QPropertyAnimation* m_fadeAnimation;     // 控制渐变时间的引擎
+
+    // 🔴 【新增】：播放打败 Boss 后的终末之诗动画
+    void playEndingAnimation();
 };

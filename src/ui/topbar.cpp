@@ -3,6 +3,7 @@
 #include <QPainterPath>
 #include <QDebug>
 #include "../logic/GlobalSaveData.h" // 🔴 必须包含
+#include <QGraphicsSceneMouseEvent> // 🔴 必须引入鼠标事件
 
 TopBar::TopBar(QGraphicsItem* parent)
     : QGraphicsObject(parent), m_playerName(""), m_hp(0), m_maxHp(0),
@@ -19,6 +20,9 @@ TopBar::TopBar(QGraphicsItem* parent)
 
     // 连通点击神经
     connect(m_masterDeckPile, &PileItem::clicked, this, &TopBar::onDeckPileClicked);
+
+    // 初始化退出按钮的位置 (右上角区域)
+    m_exitBtnRect = QRectF(1450, 10, 120, 30);
 }
 
 void TopBar::bindPlayer(Player* player) {
@@ -89,6 +93,16 @@ void TopBar::paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*)
     painter->setPen(QColor(230, 190, 50));
     // 文字也跟着挪过来
     painter->drawText(QRectF(1215, 0, 100, 48), Qt::AlignLeft | Qt::AlignVCenter, QString::number(m_gold));
+
+    // 🔴 【新增】绘制“保存并退出”按钮
+    painter->setBrush(QColor(60, 40, 40, 200)); // 按钮底色
+    painter->setPen(QPen(QColor(220, 100, 100), 1.5)); // 红色描边
+    painter->drawRoundedRect(m_exitBtnRect, 5, 5); // 圆角矩形
+
+    painter->setPen(QColor(255, 230, 230));
+    QFont exitFont("Arial", 12, QFont::Bold);
+    painter->setFont(exitFont);
+    painter->drawText(m_exitBtnRect, Qt::AlignCenter, "保存并退出");
 }
 
 // ========================================================
@@ -105,4 +119,19 @@ void TopBar::refreshDeckCount() {
 void TopBar::onDeckPileClicked() {
     qDebug() << "[TopBar] 玩家点击了总牌库！向最高司令部请求全屏支援！";
     emit deckViewRequested(); // 🔴 发射信号！
+}
+
+// 🔴 【新增】鼠标点击事件探测
+void TopBar::mousePressEvent(QGraphicsSceneMouseEvent *event) {
+    if (m_exitBtnRect.contains(event->pos())) {
+        qDebug() << "[TopBar] 玩家点击了保存并退出！";
+        // 1. 命令数据中心立刻写盘！
+        GlobalSaveData::getInstance()->saveToFile();
+        // 2. 发射信号让上层切回主界面
+        emit returnToTitleRequested();
+        event->accept();
+        return;
+    }
+    // 不要忘记调用基类方法，否则其他点击事件（如牌堆）可能会失效
+    QGraphicsObject::mousePressEvent(event);
 }
