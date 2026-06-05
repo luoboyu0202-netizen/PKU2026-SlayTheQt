@@ -16,10 +16,11 @@ class TitleMenuView : public QWidget {
 public:
     explicit TitleMenuView(QWidget *parent = nullptr);
     ~TitleMenuView();
+    void refreshSaveState(); // 🔴 新增：刷新按钮状态
     // 在 TitleMenuView.h 中添加信号
     signals:
         void startGameRequested(); // 告诉外部：玩家点开始了！
-
+        void continueGameRequested();
 protected:
     // 重写绘图事件，用于自适应绘制背景图片
     void paintEvent(QPaintEvent *event) override;
@@ -29,6 +30,8 @@ protected:
 private slots:
     void onStartGameClicked();
     void onExitGameClicked();
+    // 🔴 新增继续游戏槽函数
+    void onContinueGameClicked();
 
 private:
     void initUI();

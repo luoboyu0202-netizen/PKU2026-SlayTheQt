@@ -105,7 +105,11 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
     connect(m_mapManager, &MapManager::nodeClicked, this, &GameWindow::onMapNodeClicked);
     // 🔴 监听开始界面的“开战信号”，执行启动游戏动画
     connect(m_titleView, &TitleMenuView::startGameRequested, this, &GameWindow::handleStartGameTransition);
+    // 🔴 【新增】：监听开始界面的“继续游戏”信号 (读档开局)
+    connect(m_titleView, &TitleMenuView::continueGameRequested, this, &GameWindow::handleContinueGameTransition);
 
+    // 🔴 【新增】：监听顶栏 TopBar 的“保存并退出”信号 (写盘并退回主菜单)
+    connect(m_topBar, &TopBar::returnToTitleRequested, this, &GameWindow::handleReturnToTitle);
     // ==========================================
     // ⬛ 初始化全局黑幕
     // ==========================================
@@ -204,6 +208,16 @@ void GameWindow::handleStartGameTransition() {
     m_fadeAnimation->disconnect();
 
     connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+        // 🔴 关键修复 1：强行重置大地图，抹除上一次玩的痕迹！
+        m_mapManager->resetMap();
+
+        // 🔴 关键修复 2：将顶栏的显示数据刷新为初始状态！
+        GlobalSaveData* save = GlobalSaveData::getInstance();
+        m_topBar->updateHp(save->currentHp, save->maxHp);
+        m_topBar->updateGold(save->gold);
+        m_topBar->refreshDeckCount();
+        refreshTopBarRelics();
+
         // 🔴 切换到频道 1（大地图），并唤醒顶栏
         m_stack->setCurrentIndex(1);
         m_topBarView->show();
@@ -287,7 +301,50 @@ void GameWindow::onMapNodeClicked(const MapNode& node) {
 }
 
 void GameWindow::onBattleConcluded(BattleResult result) {
-    if (!result.isVictory) return;
+    if (!result.isVictory) {
+        qDebug() << "[GameWindow] 💀 玩家阵亡！正在抹除存档并退回主界面...";
+
+        // 抹除存档！
+        GlobalSaveData::getInstance()->deleteSaveFile();
+
+        // 降下黑幕
+        m_curtain->raise();
+        m_curtain->show();
+        m_fadeAnimation->stop();
+        m_fadeAnimation->setStartValue(0.0);
+        m_fadeAnimation->setEndValue(1.0);
+        m_fadeAnimation->disconnect();
+
+        connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+            // 切回频道 0 (主界面)
+            m_stack->setCurrentIndex(0);
+            m_topBarView->hide();
+            m_rewardScreen->hide();
+
+            // 🔴 刷新主界面的“继续游戏”按钮（让它变灰！）
+            m_titleView->refreshSaveState();
+
+            // 销毁战斗尸体
+            if (m_currentBattleView) {
+                m_stack->removeWidget(m_currentBattleView);
+                m_currentBattleView->deleteLater();
+                m_currentBattleView = nullptr;
+                m_launcher = nullptr;
+            }
+
+            // 拉开黑幕
+            m_fadeAnimation->disconnect();
+            m_fadeAnimation->setStartValue(1.0);
+            m_fadeAnimation->setEndValue(0.0);
+            connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+                m_curtain->hide();
+            });
+            m_fadeAnimation->start();
+        });
+
+        m_fadeAnimation->start();
+        return; // 死了就不执行下面的胜利逻辑了
+    }
 
     GlobalSaveData* save = GlobalSaveData::getInstance();
     save->currentHp = result.currentHp;
@@ -301,6 +358,17 @@ void GameWindow::onBattleConcluded(BattleResult result) {
 void GameWindow::onRewardProceedRequested() {
     m_rewardScreen->hide();
 
+    // ========================================================
+    // 🔴 结局大拦截：如果是打败了 Boss，直接切入“终末之诗”！
+    // ========================================================
+    if (m_lastClickedNode.type == NodeType::Boss) {
+        playEndingAnimation();
+        return; // 直接 return，不执行下方返回地图的代码！
+    }
+
+    // ========================================================
+    // ⬇️ 常规怪物离场：降下黑幕、推进大地图进度！
+    // ========================================================
     m_curtain->raise();
     m_curtain->show();
     m_fadeAnimation->stop();
@@ -309,17 +377,22 @@ void GameWindow::onRewardProceedRequested() {
     m_fadeAnimation->disconnect();
 
     connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+
+        // 🔴🔴🔴 极其关键：修复丢失的地图推进逻辑！必须把这四行补回来！
         m_mapManager->m_currentLayer = m_lastClickedNode.layer;
         m_mapManager->m_currentNodeId = m_lastClickedNode.id;
         m_mapManager->m_visitedNodes.append(m_lastClickedNode.id);
         m_mapManager->refreshNodeStates();
+        // 🔴🔴🔴
 
-        m_stack->setCurrentIndex(1); // 🔴 切回大地图 (频道1)
+        m_stack->setCurrentIndex(1); // 切回大地图
 
-        m_stack->removeWidget(m_currentBattleView);
-        m_currentBattleView->deleteLater();
-        m_currentBattleView = nullptr;
-        m_launcher = nullptr;
+        if (m_currentBattleView) {
+            m_stack->removeWidget(m_currentBattleView);
+            m_currentBattleView->deleteLater();
+            m_currentBattleView = nullptr;
+            m_launcher = nullptr;
+        }
 
         m_fadeAnimation->disconnect();
         m_fadeAnimation->setStartValue(1.0);
@@ -332,7 +405,105 @@ void GameWindow::onRewardProceedRequested() {
 
     m_fadeAnimation->start();
 }
+// ========================================================
+// 🎬 史诗级结局：缓慢黑屏 + 终末之诗滚动字幕
+// ========================================================
+// ========================================================
+// 🎬 史诗级结局：缓慢黑屏 + 终末之诗与制作人员名单
+// ========================================================
+void GameWindow::playEndingAnimation() {
+    qDebug() << "[GameWindow] 👑 玩家击败了最终 Boss！开始播放终末之诗...";
 
+    // 1. 缓慢黑屏：直接复用你写好的全局黑幕！
+    m_curtain->raise();
+    m_curtain->show();
+    m_fadeAnimation->stop();
+    m_fadeAnimation->setDuration(3000); // 3秒缓慢变黑
+    m_fadeAnimation->setStartValue(0.0);
+    m_fadeAnimation->setEndValue(1.0);
+    m_fadeAnimation->disconnect();
+
+    // 等屏幕彻底、缓慢地黑透之后，再开始出字幕！
+    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+
+        // 2. 准备终末之诗的文本标签 (长文本排版)
+        QString creditsText =
+            "探索尚未结束\n"
+            "敬请期待...\n\n\n\n\n\n"
+            "—— 制作团队 ——\n\n\n"
+            "策划：\n"
+            "apple\n\n\n"
+            "战斗系统（遗物、卡牌...）：\n"
+            "apple\n\n\n"
+            "事件系统（火堆，商店...）：\n"
+            "我心永属斯卡蒂\n\n\n"
+            "地图、主界面：\n"
+            "十一分之三\n\n\n"
+            "灵感来源：\n"
+            "Slay the Spire\n"
+            "（杀戮尖塔）\n\n\n\n\n\n"
+            "感谢您的游玩！";
+
+        QLabel* textLabel = new QLabel(creditsText, m_curtain);
+
+        // 字体大小调成32，居中对齐
+        textLabel->setStyleSheet("color: white; font-size: 32px; font-family: 'FangSong'; font-weight: bold; background: transparent;");
+        textLabel->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
+        textLabel->resize(1600, 3000); // 🔴 留出巨大的高度容纳长文本
+        textLabel->move(0, 900);       // 设置初始位置：沉在屏幕底部之外
+        textLabel->show();
+
+        // 3. 创建极度平滑的滚动动画
+        QPropertyAnimation* scrollAnim = new QPropertyAnimation(textLabel, "pos", textLabel);
+        scrollAnim->setDuration(20000); // 🔴 滚动时长设为 20 秒，慢慢放
+        scrollAnim->setStartValue(QPoint(0, 900));
+        scrollAnim->setEndValue(QPoint(0, -1500)); // 🔴 终点拉得更高，确保字完全滚出去
+
+        // 4. 动画结束后的清场收尾逻辑
+        connect(scrollAnim, &QPropertyAnimation::finished, this, [this, textLabel]() {
+            // 文字滚完后，让黑屏再停顿 2 秒钟
+            QTimer::singleShot(2000, this, [this, textLabel]() {
+
+                // 💀 抹除当前存档
+                GlobalSaveData::getInstance()->deleteSaveFile();
+
+                // 🧹 清理战场遗留尸体
+                if (m_currentBattleView) {
+                    m_stack->removeWidget(m_currentBattleView);
+                    m_currentBattleView->deleteLater();
+                    m_currentBattleView = nullptr;
+                    m_launcher = nullptr;
+                }
+
+                // 隐藏战斗顶栏，刷新开始界面
+                m_topBarView->hide();
+                m_titleView->refreshSaveState();
+                m_stack->setCurrentIndex(0);
+
+                // 🌅 5. 缓慢亮起，重见主菜单
+                m_fadeAnimation->disconnect();
+                m_fadeAnimation->setDuration(1500); // 1.5秒缓慢重现光明
+                m_fadeAnimation->setStartValue(1.0);
+                m_fadeAnimation->setEndValue(0.0);
+                connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, textLabel]() {
+                    m_curtain->hide();
+                    textLabel->deleteLater(); // 烧毁字幕标签
+
+                    // 🔴 极度重要：把转场速度重置回日常的 350 毫秒！
+                    m_fadeAnimation->setDuration(350);
+                });
+                m_fadeAnimation->start();
+
+            });
+        });
+
+        // 🎬 点火开机！(开始滚字幕)
+        scrollAnim->start(QAbstractAnimation::DeleteWhenStopped);
+    });
+
+    // 🎬 启动缓慢黑屏！
+    m_fadeAnimation->start();
+}
 void GameWindow::enterCampfireEvent() {
     qDebug() << "[GameWindow] 拦截成功！开始安营扎寨！准备降下黑幕...";
 
@@ -1068,4 +1239,115 @@ void GameWindow::refreshTopBarRelics() {
 
     // 3. 把这份绝对正确、不会有任何遗漏的名单交给托盘！
     m_globalRelicTray->setRelics(m_globalRelics);
+}
+
+// ==========================================
+// 💾 新增：处理“读档继续游戏”的黑场转场动画
+// ==========================================
+void GameWindow::handleContinueGameTransition() {
+    qDebug() << "[GameWindow] 收到继续游戏请求，正在根据读档数据重建世界...";
+
+    m_curtain->raise();
+    m_curtain->show();
+    m_fadeAnimation->stop();
+    m_fadeAnimation->setStartValue(0.0);
+    m_fadeAnimation->setEndValue(1.0);
+    m_fadeAnimation->disconnect();
+
+    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+        // 🔴 1. 此时内存中的 GlobalSaveData 已经被读档刷新了！
+        // 我们要让 GameWindow 的顶栏立刻同步这些老玩家的数据！
+        GlobalSaveData* save = GlobalSaveData::getInstance();
+        m_topBar->updateHp(save->currentHp, save->maxHp);
+        m_topBar->updateGold(save->gold);
+        m_topBar->refreshDeckCount();
+        refreshTopBarRelics(); // 重新生成上次存档的遗物！
+
+        // 🔴 2. 切换到频道 1（大地图），并唤醒顶栏
+        m_stack->setCurrentIndex(1);
+        m_topBarView->show();
+        m_topBarView->raise();
+
+        m_fadeAnimation->disconnect();
+        m_fadeAnimation->setStartValue(1.0);
+        m_fadeAnimation->setEndValue(0.0);
+
+        connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+            m_curtain->hide();
+        });
+        m_fadeAnimation->start();
+    });
+
+    m_fadeAnimation->start();
+}
+
+// ==========================================
+// 💾 新增：处理“保存并退出”返回主菜单
+// ==========================================
+void GameWindow::handleReturnToTitle() {
+    qDebug() << "[GameWindow] 收到保存退出请求，准备隐藏UI并退回主界面...";
+
+    m_curtain->raise();
+    m_curtain->show();
+    m_fadeAnimation->stop();
+    m_fadeAnimation->setStartValue(0.0);
+    m_fadeAnimation->setEndValue(1.0);
+    m_fadeAnimation->disconnect();
+
+    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+        // 🔴 1. 隐藏战斗用的悬浮顶栏
+        m_topBarView->hide();
+        m_rewardScreen->hide();
+
+        // 🔴 2. 暴力切回频道 0（主菜单）
+        m_stack->setCurrentIndex(0);
+
+        // 🔴 关键修复：刷新开始界面的按钮状态（点亮继续游戏）
+        m_titleView->refreshSaveState();
+
+        // 🔴 3. 清理一下有可能遗留的战斗画面尸体
+        if (m_currentBattleView) {
+            m_stack->removeWidget(m_currentBattleView);
+            m_currentBattleView->deleteLater();
+            m_currentBattleView = nullptr;
+            m_launcher = nullptr;
+        }
+
+        // 🔥 清理可能遗留的篝火画面
+        for (auto* view : this->findChildren<CampfireView*>()) {
+            view->hide();
+            view->deleteLater();
+        }
+
+        // 🛍️ 清理可能遗留的商店画面
+        for (auto* view : this->findChildren<MerchantView*>()) {
+            view->hide();
+            view->deleteLater();
+        }
+
+        // 🎁 清理可能遗留的宝箱画面
+        for (auto* view : this->findChildren<ChestView*>()) {
+            view->hide();
+            view->deleteLater();
+        }
+
+        // ❓ 清理可能遗留的问号纯文本事件画面
+        for (auto* view : this->findChildren<EventBaseView*>()) {
+            view->hide();
+            view->deleteLater();
+        }
+
+        m_fadeAnimation->disconnect();
+        m_fadeAnimation->setStartValue(1.0);
+        m_fadeAnimation->setEndValue(0.0);
+
+        connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
+            m_curtain->hide();
+            // 注意：如果你希望不关游戏直接亮起继续按钮，可以在这里调用 m_titleView 的某个刷新函数
+            // 如果不写，玩家需要关掉窗口重开游戏，继续按钮才会根据本地 JSON 亮起，也是可以的。
+        });
+        m_fadeAnimation->start();
+    });
+
+    m_fadeAnimation->start();
 }
