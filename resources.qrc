@@ -133,5 +133,6 @@
         <file>resources/images/intents/attack_defend_2.png</file>
         <file>resources/images/intents/attack_defend_3.png</file>
         <file>resources/images/intents/attack_defend_4.png</file>
+        <file>resources/images/enemies/hexaghost.png</file>
     </qresource>
 </RCC>

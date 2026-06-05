@@ -767,13 +767,32 @@ void MerchantView::playPurchaseEffect(QGraphicsItem* item, const QPointF& center
     fxView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     fxView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    // 🔴【核心修复】：强制特效层每帧全屏刷新！拒绝任何底层画面的残留！
-    fxView->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+    // ❌ 已经彻底删除了极其耗性能的 FullViewportUpdate！
 
     QGraphicsScene* fxScene = new QGraphicsScene(0, 0, fxView->width(), fxView->height(), fxView);
     fxView->setScene(fxScene);
     fxView->show();
     fxView->raise(); // 🔴 絕對壓制，蓋過 TopBar！
+
+    // ========================================================
+    // 🔪 核心修复：精准脏矩形同步！
+    // 不再全屏刷新，而是让收回的手指“手把手”教透明结界哪里需要刷新！
+    // ========================================================
+    if (m_handAnimY) {
+        connect(m_handAnimY, &QVariantAnimation::valueChanged, fxView, [this, fxView]() {
+            if (m_handCursor && fxView->viewport()) {
+                // 1. 拿到手部在底层场景中的物理矩形大小
+                QRectF handRect = m_handCursor->sceneBoundingRect();
+
+                // 2. 将底层的坐标精准映射到顶层的 GameWindow 坐标系
+                QPoint topLeft = this->mapTo(this->window(), this->mapFromScene(handRect.topLeft()));
+                QPoint bottomRight = this->mapTo(this->window(), this->mapFromScene(handRect.bottomRight()));
+
+                // 3. 命令透明层：只刷新手指经过的这块长条形区域！
+                fxView->viewport()->update(QRect(topLeft, bottomRight));
+            }
+        });
+    }
 
     // ========================================================
     // 🗺️ 魔法 2：精準坐標轉換
@@ -817,9 +836,7 @@ void MerchantView::playPurchaseEffect(QGraphicsItem* item, const QPointF& center
     glowOrb->setPen(Qt::NoPen);
     glowOrb->setPos(startPos);
 
-    auto* blur = new QGraphicsBlurEffect();
-    blur->setBlurRadius(10);
-    glowOrb->setGraphicsEffect(blur);
+    // ❌ 已经彻底删除了 QGraphicsBlurEffect，径向渐变本身就足够平滑且性能极高！
     fxScene->addItem(glowOrb);
 
     struct TrailParticle { QGraphicsEllipseItem* dot; qreal dx, dy; int age; int life; };

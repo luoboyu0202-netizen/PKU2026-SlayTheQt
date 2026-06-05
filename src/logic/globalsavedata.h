@@ -43,7 +43,17 @@ public:
         relicIds.clear();
 
         // 塞入初始卡牌 ID (参考你 CardFactory 的可用 ID)
-        deckIds.append("card_test");
+        deckIds.append("card_bash");
+        deckIds.append("card_strike");
+        deckIds.append("card_strike");
+        deckIds.append("card_strike");
+        deckIds.append("card_strike");
+        deckIds.append("card_strike");
+        deckIds.append("card_defend");
+        deckIds.append("card_defend");
+        deckIds.append("card_defend");
+        deckIds.append("card_defend");
+
 
         // 初始遗物 ID (参考你 RelicFactory 的可用 ID)
         relicIds.append("relic_burning_blood");

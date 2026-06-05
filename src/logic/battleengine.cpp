@@ -3,6 +3,7 @@
 #include <QTimer> // 🔴【新增】引入定时器
 #include <entities/StatusManager.h>
 #include "cards/SlimedCard.h"
+#include "cards/BurnCard.h"
 #include "EnemyFactory.h"
 #include "CardManager.h"
 #include <StatusManager.h>
@@ -98,7 +99,8 @@ void BattleEngine::refreshEnemyIntent() {
         // 3. 只要这只怪物的意图带“攻击”，统统扔进管道里，结合它身上的力量、或者玩家身上的易伤重算伤害！
         if (intent.type == IntentType::Attack ||
             intent.type == IntentType::AttackAndDebuff ||
-            intent.type == IntentType::AttackAndDefend) {
+            intent.type == IntentType::AttackAndDefend||
+            intent.type ==IntentType::AttackAndInsertStatus) {
 
             // ⚠️ 核心微调：这里的 source 换成当前循环里的 enemy 喵！
             intent.value = StatusManager::calculateDamage(enemy, m_player, intent.value);
@@ -491,6 +493,43 @@ void BattleEngine::processNextEnemyAction(int index) {
             }
             m_cardManager->emitPileCounts();
         }
+    }
+    // ==========================================================
+    // ⚔️ 复合意图：攻击并塞入状态牌！
+    // ==========================================================
+    else if (currentIntent.type == IntentType::AttackAndInsertStatus) {
+
+        // 1. 结算攻击伤害 (完美支持多段连击)
+        int damage = StatusManager::calculateDamage(enemy, m_player, currentIntent.value);
+        for (int i = 0; i < currentIntent.multiHitCount; ++i) {
+            m_player->takeDamage(damage);
+        }
+        qDebug() << "[Engine]" << enemy->getName() << "对玩家造成了"
+                 << currentIntent.multiHitCount << "次" << damage << "点伤害！";
+
+        // 2. 完美复用你的塞牌逻辑！
+        // 🔴 注意：这里读取的是 statusValue，代表要塞几张牌！
+        int insertCount = currentIntent.statusValue;
+        qDebug() << "[Engine]" << enemy->getName() << "向玩家牌库塞入了"
+                 << insertCount << "张" << currentIntent.cardIdToInsert;
+
+        if (currentIntent.cardIdToInsert == "card_slimed") {
+            for (int i = 0; i < insertCount; ++i) {
+                // 确保你的 SlimedCard 构造函数支持这样传参喵！
+                Card* slimeCard = new SlimedCard(m_cardManager);
+                m_cardManager->addCardToDiscardPile(slimeCard);
+            }
+        }
+        else if (currentIntent.cardIdToInsert == "card_burn") {
+            for (int i = 0; i < insertCount; ++i) {
+                // 🟢 实例化我们刚刚写好的灼伤牌！
+                Card* burnCard = new BurnCard(m_cardManager);
+                m_cardManager->addCardToDiscardPile(burnCard);
+            }
+        }
+
+        // 统一呼叫 UI 刷新牌堆数字
+        m_cardManager->emitPileCounts();
     }
     else if (currentIntent.type == IntentType::Summon) {
         const int MAX_SLOTS = 4;

@@ -97,6 +97,8 @@ HEADERS += \
     src/entities/enemies/Cultist.h \
     src/entities/enemies/FatGremlin.h \
     src/entities/enemies/GremlinLeader.h \
+    src/entities/enemies/HexaFlameItem.h \
+    src/entities/enemies/Hexaghost.h \
     src/entities/enemies/JawWorm.h \
     src/entities/enemies/MadGremlin.h \
     src/entities/enemies/ShieldGremlin.h \

@@ -13,8 +13,8 @@
 // ============================================================
 // 测试开关：设为 1 启用对应事件独立测试，设为 0 则走大地图
 // ============================================================
-#define TEST_EVENT 1          // 0=地图模式, 1=独立测试事件
-#define TEST_WHICH 7          // 1=Campfire, 2=Chest, 3=Merchant, 4=QuestionMark(GoldenWing), 5=QuestionMark(BigFish), 6=WorldOfGoop, 7=Ssssserpent
+#define TEST_EVENT 0          // 0=地图模式, 1=独立测试事件
+#define TEST_WHICH 6          // 1=Campfire, 2=Chest, 3=Merchant, 4=QuestionMark(GoldenWing), 5=QuestionMark(BigFish), 6=WorldOfGoop, 7=Ssssserpent
 
 int main(int argc, char *argv[]) {
     QApplication a(argc, argv);
