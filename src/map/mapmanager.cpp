@@ -323,3 +323,25 @@ bool MapManager::eventFilter(QObject *watched, QEvent *event) {
     // 其他不关心的事件，原封不动地还给父类处理
     return QWidget::eventFilter(watched, event);
 }
+
+void MapManager::resetMap() {
+    qDebug() << "[MapManager] 正在重置大地图...";
+
+    // ========================================================
+    // 🔴 关键修复：物理销毁上一局遗留的所有地图节点按钮！
+    // ========================================================
+    // 找出 MapManager 身上挂着的所有 QPushButton
+    QList<QPushButton*> oldButtons = this->findChildren<QPushButton*>();
+    for (QPushButton* btn : oldButtons) {
+        btn->hide();           // 先从屏幕上隐藏
+        btn->deleteLater();    // 安全销毁它的内存
+    }
+
+    m_currentLayer = 0;
+    m_currentNodeId = -1;
+    m_visitedNodes.clear();
+
+    generateMapNodes();  // 重新随机生成整张地图的节点
+    refreshNodeStates(); // 重新计算哪些节点可以点击
+    update();            // 触发重绘
+}

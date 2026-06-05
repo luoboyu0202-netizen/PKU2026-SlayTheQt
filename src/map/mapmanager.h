@@ -28,6 +28,8 @@ public:
 
     void generateMapNodes();
 
+    void resetMap(); // 🔴 新增：重置大地图进度
+
 protected:
     void paintEvent(QPaintEvent *event) override;
 

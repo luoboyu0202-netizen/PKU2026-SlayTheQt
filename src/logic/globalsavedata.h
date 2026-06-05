@@ -4,7 +4,14 @@
 #include <QString>
 #include <QList>
 #include <QMap>
-
+// 🔴 新增：引入 JSON 和 文件操作必需的头文件
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QFile>
+#include <QDir>
+#include <QCoreApplication>
+#include <QDebug>
 class GlobalSaveData {
 public:
     // 单例模式获取全局唯一实例
@@ -62,6 +69,92 @@ public:
 
     // 🔴【新增】：记忆保险箱，记录 <遗物ID, 计数值>
     QMap<QString, int> relicCounters;
+    // ========================================================
+    // 💾 【新增】存档系统核心 API
+    // ========================================================
+
+    // 获取存档文件的绝对路径（默认保存在可执行文件同级目录下的 savegame.json）
+    QString getSaveFilePath() const {
+        return QCoreApplication::applicationDirPath() + "/savegame.json";
+    }
+
+    // 判断当前是否存在存档
+    bool hasSaveFile() const {
+        return QFile::exists(getSaveFilePath());
+    }
+
+    void deleteSaveFile() {
+        QFile file(getSaveFilePath());
+        if (file.exists()) {
+            file.remove();
+            qDebug() << "[存档系统] 💀 玩家阵亡，存档已被抹除！";
+        }
+    }
+
+    // 写入存档到硬盘
+    void saveToFile() {
+        QJsonObject rootObj;
+        rootObj["currentHp"] = currentHp;
+        rootObj["maxHp"] = maxHp;
+        rootObj["gold"] = gold;
+        rootObj["maxEnergy"] = maxEnergy;
+
+        // 转换卡牌 ID 列表
+        QJsonArray deckArray;
+        for (const QString& id : deckIds) { deckArray.append(id); }
+        rootObj["deckIds"] = deckArray;
+
+        // 转换遗物 ID 列表
+        QJsonArray relicArray;
+        for (const QString& id : relicIds) { relicArray.append(id); }
+        rootObj["relicIds"] = relicArray;
+
+        // 写入文件
+        QJsonDocument doc(rootObj);
+        QFile file(getSaveFilePath());
+        if (file.open(QIODevice::WriteOnly)) {
+            file.write(doc.toJson());
+            file.close();
+            qDebug() << "[存档系统] 游戏进度已成功保存至:" << getSaveFilePath();
+        } else {
+            qDebug() << "[存档系统] 🚨 无法创建存档文件!";
+        }
+    }
+
+    // 从硬盘读取存档
+    void loadFromFile() {
+        QFile file(getSaveFilePath());
+        if (!file.open(QIODevice::ReadOnly)) {
+            qDebug() << "[存档系统] 🚨 找不到存档文件!";
+            return;
+        }
+
+        QByteArray data = file.readAll();
+        file.close();
+
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+        QJsonObject rootObj = doc.object();
+
+        // 恢复数据
+        currentHp = rootObj["currentHp"].toInt(80); // 找不到就默认80
+        maxHp = rootObj["maxHp"].toInt(80);
+        gold = rootObj["gold"].toInt(99);
+        maxEnergy = rootObj["maxEnergy"].toInt(3);
+
+        deckIds.clear();
+        QJsonArray deckArray = rootObj["deckIds"].toArray();
+        for (int i = 0; i < deckArray.size(); ++i) {
+            deckIds.append(deckArray[i].toString());
+        }
+
+        relicIds.clear();
+        QJsonArray relicArray = rootObj["relicIds"].toArray();
+        for (int i = 0; i < relicArray.size(); ++i) {
+            relicIds.append(relicArray[i].toString());
+        }
+
+        qDebug() << "[存档系统] 读档成功！当前HP:" << currentHp << "卡牌数量:" << deckIds.size();
+    }
 
 private:
     GlobalSaveData() {}

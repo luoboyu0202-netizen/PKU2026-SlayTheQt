@@ -38,6 +38,10 @@ public slots:
 
 signals:
     void deckViewRequested(); // 🔴 向上级请求展开牌库结界！
+    void returnToTitleRequested(); // 🔴 新增：请求返回主菜单信号
+
+protected:
+    void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
 
 private:
     // UI 层的显示缓存
@@ -52,4 +56,6 @@ private:
     QFont m_uiFont; // 统一的 UI 字体
     // 🔴 全局总牌组的物理实体
     PileItem* m_masterDeckPile;
+
+    QRectF m_exitBtnRect; // 🔴 退出按钮的碰撞箱
 };

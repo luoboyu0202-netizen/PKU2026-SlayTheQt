@@ -406,6 +406,20 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         }
         break;
 
+    case IntentType::AttackAndDebuff:
+        if (currentDisplayValue <= 5) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_1.png");
+        } else if (currentDisplayValue <= 10) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_2.png");
+        } else if (currentDisplayValue <= 15) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_3.png");
+        } else if (currentDisplayValue <= 20) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_4.png");
+        } else if (currentDisplayValue <= 25) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_5.png");
+        }
+        break;
+
     case IntentType::AttackAndDefend:
         if (currentDisplayValue <= 5) {
             intentIcon = getCachedIcon(":/resources/images/intents/attack_defend_1.png");
@@ -417,6 +431,7 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
             intentIcon = getCachedIcon(":/resources/images/intents/attack_defend_4.png");
         }
         break;
+        
     case IntentType::Defend:          intentIcon = getCachedIcon(":/resources/images/intents/defend.png"); break;
     case IntentType::Debuff:          intentIcon = getCachedIcon(":/resources/images/intents/debuff.png"); break;
     case IntentType::Buff:            intentIcon = getCachedIcon(":/resources/images/intents/buff.png"); break;

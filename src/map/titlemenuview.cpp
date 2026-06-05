@@ -4,10 +4,14 @@
 #include <QApplication>
 #include <QDebug>
 #include <QEasingCurve>
+#include "../logic/GlobalSaveData.h" // 🔴 必须包含以查询存档
 
 TitleMenuView::TitleMenuView(QWidget *parent)
     : QWidget(parent), m_hasSavedGame(false) // 备注：目前无存档功能，默认为 false
 {
+    // 🔴 启动时，侦测硬盘里有没有存档！
+    m_hasSavedGame = GlobalSaveData::getInstance()->hasSaveFile();
+
     // 1. 加载背景图片
     // 🔴 已经为你更新为新的纯英文图片名称！
     // 请确保这张图片已经添加到了你的 Qt 资源文件 (.qrc) 的对应目录中
@@ -57,15 +61,8 @@ void TitleMenuView::initUI() {
     )";
     this->setStyleSheet(baseQss);
 
-    // 存档状态判断逻辑
-    if (!m_hasSavedGame) {
-        // 无存档：禁用按钮，文字变灰
-        m_btnContinue->setEnabled(false);
-        m_btnContinue->setStyleSheet("QPushButton { color: gray; font-family: 'FangSong'; font-weight: bold; }");
-    } else {
-        // 有存档才安装事件监听器（才会有光效）
-        m_btnContinue->installEventFilter(this);
-    }
+    // 🔴【修改】：直接调用你写好的状态刷新函数，一键搞定继续按钮的样式和监听器！
+    refreshSaveState();
 
     // 给开始和退出按钮安装事件监听器
     m_btnStart->installEventFilter(this);
@@ -74,6 +71,16 @@ void TitleMenuView::initUI() {
     // 绑定信号槽
     connect(m_btnStart, &QPushButton::clicked, this, &TitleMenuView::onStartGameClicked);
     connect(m_btnExit, &QPushButton::clicked, this, &TitleMenuView::onExitGameClicked);
+    // 🔴 绑定继续游戏按钮
+    connect(m_btnContinue, &QPushButton::clicked, this, &TitleMenuView::onContinueGameClicked);
+}
+// 🔴 实现继续游戏逻辑
+void TitleMenuView::onContinueGameClicked() {
+    qDebug() << "[开始界面] 点击了继续游戏！正在读取存档...";
+    // 1. 读取存档进内存
+    GlobalSaveData::getInstance()->loadFromFile();
+    // 2. 发射读档开战的信号
+    emit continueGameRequested();
 }
 
 void TitleMenuView::initLightEffects() {
@@ -85,11 +92,8 @@ void TitleMenuView::initLightEffects() {
         }
     )";
 
-    // 找出需要光效的按钮
-    QList<QPushButton*> buttons = {m_btnStart, m_btnExit};
-    if (m_hasSavedGame) {
-        buttons.append(m_btnContinue);
-    }
+    // 🔴【修改】：不管有没有存档，始终为三个按钮都预先创建光斑！
+    QList<QPushButton*> buttons = {m_btnContinue, m_btnStart, m_btnExit};
 
     // 为每个按钮生成一个隐藏的“光斑” Label
     for (QPushButton* btn : buttons) {
@@ -158,6 +162,10 @@ void TitleMenuView::hideHoverAnimation(QPushButton* button) {
 
 void TitleMenuView::onStartGameClicked() {
     qDebug() << "[开始界面] 点击了开始游戏！准备切入大地图...";
+    // 🔴 既然是新开局，必须重置内存数据并覆盖掉老存档！
+    GlobalSaveData::getInstance()->initNewGame();
+    GlobalSaveData::getInstance()->saveToFile(); // 把新开局的状态写下去
+
     emit startGameRequested(); // 🔴 发射开战信号！
 
     // 假设大地图界面类叫 MapManager，并且你之后要在这里切换过去
@@ -167,4 +175,20 @@ void TitleMenuView::onStartGameClicked() {
 void TitleMenuView::onExitGameClicked() {
     qDebug() << "[开始界面] 退出游戏。";
     QApplication::quit();
+}
+
+void TitleMenuView::refreshSaveState() {
+    m_hasSavedGame = GlobalSaveData::getInstance()->hasSaveFile();
+
+    if (!m_hasSavedGame) {
+        // 没存档：置灰，禁用
+        m_btnContinue->setEnabled(false);
+        m_btnContinue->setStyleSheet("QPushButton { color: gray; font-family: 'FangSong'; font-weight: bold; }");
+        m_btnContinue->removeEventFilter(this); // 移除光效
+    } else {
+        // 有存档：点亮，启用
+        m_btnContinue->setEnabled(true);
+        m_btnContinue->setStyleSheet("QPushButton { color: #FFD700; font-family: 'FangSong'; font-weight: bold; }");
+        m_btnContinue->installEventFilter(this); // 加上光效
+    }
 }
