@@ -8,6 +8,7 @@ public:
     explicit WizardGremlin(QObject* parent = nullptr)
         : Enemy("地精巫师", QRandomGenerator::global()->bounded(15, 17), ":/resources/images/enemies/wizard_gremlin.png", parent) {
         setId("Wizard_Gremlin");
+        setScaleFactor(1.2);
     }
 
     void rollNextIntent() override {

@@ -95,6 +95,7 @@ HEADERS += \
     src/entities/cards/defendcard.h \
     src/entities/cards/strikecard.h \
     src/entities/cards/testcard.h \
+    src/entities/enemies/Cultist.h \
     src/entities/enemies/FatGremlin.h \
     src/entities/enemies/GremlinLeader.h \
     src/entities/enemies/JawWorm.h \

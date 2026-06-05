@@ -2,6 +2,7 @@
 #include <QGraphicsObject>
 #include "../entities/Enemy.h"
 #include "StatusIconItem.h"
+#include <QPropertyAnimation>
 
 class BattleEngine;
 
@@ -14,7 +15,7 @@ class EnemyItem : public QGraphicsObject {
 
 public:
     EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset = 0, QGraphicsItem* parent = nullptr);
-    virtual ~EnemyItem() = default;
+    ~EnemyItem() override;
 
     // 获取与之绑定的底层数据指针，日后用于卡牌碰撞检测
     Enemy* getLogicEnemy() const { return m_logicEnemy; }
@@ -38,6 +39,12 @@ protected:
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override; // 新增！
+
+public slots:
+    void playHitAnimation();    // 播放受击震动
+    void playActionAnimation(); // 播放出招前扑
+    // 🔴【新增】：怪物死亡演出
+    void playDeathAnimation();
 
 private:
     Enemy* m_logicEnemy;

@@ -9,6 +9,8 @@
 #include <QGraphicsSceneHoverEvent> // 别忘了包含这个头文件喵！
 #include <QRandomGenerator> // 🔴 记得加上这个！
 #include <QHash>
+#include <QParallelAnimationGroup>
+#include <QGraphicsOpacityEffect>
 
 // 🔴 1. 参数列表增加 int spriteYOffset
 EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset, QGraphicsItem* parent)
@@ -28,22 +30,20 @@ EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset,
     m_intentType = logicEnemy->getIntentType();
     m_intentValue = logicEnemy->getIntentValue();
 
-    // 绑定信号
     connect(logicEnemy, &Enemy::hpChanged, this, [this](int cur, int max){
-        if (cur < m_hp) {
-            // 【果汁感核心】：受到伤害，立刻左右抽搐震动！
-            QPropertyAnimation* shake = new QPropertyAnimation(this, "x");
-            qreal baseX = this->x();
-            shake->setDuration(300);
-            shake->setKeyValueAt(0, baseX);
-            shake->setKeyValueAt(0.2, baseX - 15);
-            shake->setKeyValueAt(0.4, baseX + 15);
-            shake->setKeyValueAt(0.6, baseX - 15);
-            shake->setKeyValueAt(0.8, baseX + 15);
-            shake->setKeyValueAt(1, baseX);
-            shake->start(QAbstractAnimation::DeleteWhenStopped);
+        m_hp = cur;
+        m_maxHp = max;
+        update();
+    });
+
+    // 1. 监听怪物的受击震动
+    connect(m_logicEnemy, &Fighter::animationTakeDamage, this, &EnemyItem::playHitAnimation);
+
+    // 2. 监听大管家的出招指令
+    connect(m_engine, &BattleEngine::enemyActing, this, [this](Enemy* actor) {
+        if (actor == m_logicEnemy) {
+            playActionAnimation();
         }
-        m_hp = cur; m_maxHp = max; update();
     });
 
     connect(logicEnemy->getStatusManager(), &StatusManager::statusChanged, this, [this]() {
@@ -118,8 +118,6 @@ EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset,
         }
         update();
     });
-
-    connect(logicEnemy, &Enemy::died, this, [this](){ this->hide(); });
 
     // ========================================================
     // 🔴【新信号】：监听怪物的状态变化！
@@ -216,6 +214,15 @@ EnemyItem::EnemyItem(Enemy* logicEnemy, BattleEngine* engine, int spriteYOffset,
 
     // 💡 额外保险：如果你想让怪物在主角挂上易伤时，意图数字也跟着暴涨，
     // 把怪物也连进刚才 BattleView 里的那个“全局状态广播局”里，让怪物一起 update()！
+    // 💀 监听死亡宣告
+    connect(m_logicEnemy, &Fighter::died, this, [this](Fighter*) {
+        playDeathAnimation();
+    });
+}
+
+
+EnemyItem::~EnemyItem() {
+    qDebug() << "[🚨 探针一] 警报！EnemyItem 被彻底销毁了！名字:" << (m_logicEnemy ? m_logicEnemy->getName() : "未知");
 }
 
 // ========================================================
@@ -243,7 +250,7 @@ void EnemyItem::layoutStatusIcons() {
 // ========================================================
 QRectF EnemyItem::boundingRect() const {
     // 🔴 画布整体扩大！往上拉伸到 -400，宽度给 500！
-    return QRectF(-250, -400, 500, 500);
+    return QRectF(-250, -500, 600, 600);
 }
 
 // ========================================================
@@ -310,21 +317,46 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
     QPixmap intentIcon;
     switch (m_intentType) {
     case IntentType::Attack:
-        if (currentDisplayValue <= 8) {
+        if (currentDisplayValue <= 5) {
             intentIcon = getCachedIcon(":/resources/images/intents/attack_1.png");
-        } else if (currentDisplayValue <= 16) {
+        } else if (currentDisplayValue <= 10) {
             intentIcon = getCachedIcon(":/resources/images/intents/attack_2.png");
-        } else if (currentDisplayValue <= 24) {
+        } else if (currentDisplayValue <= 15) {
             intentIcon = getCachedIcon(":/resources/images/intents/attack_3.png");
-        } else if (currentDisplayValue <= 32) {
+        } else if (currentDisplayValue <= 20) {
             intentIcon = getCachedIcon(":/resources/images/intents/attack_4.png");
-        } else {
+        } else if (currentDisplayValue <= 25) {
             intentIcon = getCachedIcon(":/resources/images/intents/attack_5.png");
+        } else if (currentDisplayValue <= 30) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_6.png");
         }
         break;
 
-    case IntentType::AttackAndDebuff: intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff.png"); break;
-    case IntentType::AttackAndDefend: intentIcon = getCachedIcon(":/resources/images/intents/attack_defend.png"); break;
+    case IntentType::AttackAndDebuff:
+        if (currentDisplayValue <= 5) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_1.png");
+        } else if (currentDisplayValue <= 10) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_2.png");
+        } else if (currentDisplayValue <= 15) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_3.png");
+        } else if (currentDisplayValue <= 20) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_4.png");
+        } else if (currentDisplayValue <= 25) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_5.png");
+        }
+        break;
+
+    case IntentType::AttackAndDefend:
+        if (currentDisplayValue <= 5) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_defend_1.png");
+        } else if (currentDisplayValue <= 10) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_defend_2.png");
+        } else if (currentDisplayValue <= 15) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_defend_3.png");
+        } else if (currentDisplayValue <= 20) {
+            intentIcon = getCachedIcon(":/resources/images/intents/attack_defend_4.png");
+        }
+        break;
     case IntentType::Defend:          intentIcon = getCachedIcon(":/resources/images/intents/defend.png"); break;
     case IntentType::Debuff:          intentIcon = getCachedIcon(":/resources/images/intents/debuff.png"); break;
     case IntentType::Buff:            intentIcon = getCachedIcon(":/resources/images/intents/buff.png"); break;
@@ -422,6 +454,11 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 // 🖱️ 悬停事件与精准判定
 // ========================================================
 void EnemyItem::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
+
+    // // 🔴 临时调试：只要鼠标一指上去，它当场表演去世！
+    // qDebug() << "[🚨 探针二] 鼠标强制触发死亡动画！";
+    // playDeathAnimation();
+
     hoverMoveEvent(event);
 }
 
@@ -448,4 +485,101 @@ void EnemyItem::hoverMoveEvent(QGraphicsSceneHoverEvent* event) {
 
 void EnemyItem::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
     QToolTip::hideText();
+}
+
+// ========================================================
+// 💥 动画魔法 1：受击震动 (Hit Shake)
+// ========================================================
+void EnemyItem::playHitAnimation() {
+
+    if (m_logicEnemy->isDead()) return;
+
+    // 针对当前 Item 的 "pos" 属性创建一个动画
+    QPropertyAnimation* anim = new QPropertyAnimation(this, "pos");
+    anim->setDuration(250); // 极速震动！0.25 秒完成
+
+    QPointF startPos = this->pos();
+
+    // 关键帧：左右快速抽搐！
+    anim->setKeyValueAt(0.0, startPos);
+    anim->setKeyValueAt(0.2, startPos + QPointF(15, 0));  // 往右偏
+    anim->setKeyValueAt(0.4, startPos + QPointF(-15, 0)); // 往左偏
+    anim->setKeyValueAt(0.6, startPos + QPointF(10, 0));  // 往右偏小一点
+    anim->setKeyValueAt(0.8, startPos + QPointF(-10, 0)); // 往左偏小一点
+    anim->setKeyValueAt(1.0, startPos);                   // 完美归位！
+
+    anim->start(QAbstractAnimation::DeleteWhenStopped); // 播完自动销毁动画对象
+}
+
+// ========================================================
+// 🗡️ 动画魔法 2：出招前扑 (Action Pounce)
+// ========================================================
+void EnemyItem::playActionAnimation() {
+    QPropertyAnimation* anim = new QPropertyAnimation(this, "pos");
+    anim->setDuration(350); // 配合异步引擎的 600ms 延时，0.35 秒的演出刚刚好！
+
+    QPointF startPos = this->pos();
+
+    // 关键帧：迅速向左冲刺（靠近主角），然后缓慢退回
+    anim->setKeyValueAt(0.0, startPos);
+
+    // 🔴 魔法：OutCubic 能让它冲出去瞬间极快，0.3 的时候就冲到了最前面 (-40像素)
+    anim->setKeyValueAt(0.3, startPos + QPointF(-40, 0));
+
+    anim->setKeyValueAt(1.0, startPos); // 剩下来的时间缓慢退回原位
+
+    anim->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+// ========================================================
+// 💀 动画魔法 3：死亡消散 (Death Fade & Shake) - 终极稳定版
+// ========================================================
+void EnemyItem::playDeathAnimation() {
+    qDebug() << "[🩻 动画诊断] 敌人死亡动画正式启动！名字:" << m_logicEnemy->getName();
+
+    // 解除缓存，防止滤镜失效
+    this->setCacheMode(QGraphicsItem::NoCache);
+
+    m_intentType = IntentType::Unknown;
+    m_tooltipText = "";
+    QToolTip::hideText();
+    update(); // 让头顶的大刀立刻消失
+
+    QParallelAnimationGroup* deathGroup = new QParallelAnimationGroup(this);
+
+    // [子动画 A]：极其剧烈的垂死挣扎
+    QPropertyAnimation* shake = new QPropertyAnimation(this, "pos");
+    shake->setDuration(600);
+    QPointF startPos = this->pos();
+    shake->setKeyValueAt(0.0, startPos);
+    shake->setKeyValueAt(0.2, startPos + QPointF(20, -10));
+    shake->setKeyValueAt(0.4, startPos + QPointF(-20, 15));
+    shake->setKeyValueAt(0.6, startPos + QPointF(15, -20));
+    shake->setKeyValueAt(0.8, startPos + QPointF(-10, 10));
+    shake->setKeyValueAt(1.0, startPos);
+
+    // ========================================================
+    // 🔴 核心修复 2：使用专属透明度滤镜！绝对不会瞬间失效！
+    // ========================================================
+    QGraphicsOpacityEffect* opacityEffect = new QGraphicsOpacityEffect(this);
+    opacityEffect->setOpacity(1.0);
+    this->setGraphicsEffect(opacityEffect); // 将滤镜套在怪物身上
+
+    QPropertyAnimation* fade = new QPropertyAnimation(opacityEffect, "opacity");
+    fade->setDuration(600);
+    fade->setStartValue(1.0);
+    fade->setEndValue(0.0);
+
+    // 把两个动画塞进组里
+    deathGroup->addAnimation(shake);
+    deathGroup->addAnimation(fade);
+
+    // 彻底埋葬：动画结束后，安全隐藏并销毁
+    connect(deathGroup, &QParallelAnimationGroup::finished, this, [this]() {
+        this->hide();
+        this->deleteLater();
+    });
+
+    // 启动！
+    deathGroup->start(QAbstractAnimation::DeleteWhenStopped);
 }

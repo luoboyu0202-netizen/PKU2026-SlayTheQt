@@ -252,6 +252,13 @@ bool BattleEngine::playCard(Card* card, Fighter* target) {
     // 🔴【遗物系统】：通知管家卡牌打出了！
     // ==========================================================
 
+    // ==========================================================
+    // 🎬【极致果汁感：主角突刺演出！】
+    // 只要打出的是攻击牌，立刻命令主角往前扑击！
+    // ==========================================================
+    if (card->getType() == CardType::Attack) {
+        emit m_player->animationAction();
+    }
 
     // ==========================================================
     // 🔴【卡牌结算】：执行卡牌效果！
@@ -317,7 +324,9 @@ bool BattleEngine::playCard(Card* card, Fighter* target) {
             }
         }
 
-        emit battleEnded(true);
+        QTimer::singleShot(1200, this, [this]() {
+            emit battleEnded(true);
+        });
     }
 
     return true;
@@ -422,6 +431,8 @@ void BattleEngine::processNextEnemyAction(int index) {
         processNextEnemyAction(index + 1);
         return;
     }
+
+    emit enemyActing(enemy); // 🔴 解除封印！
 
     // 1. 行动前：清空这只怪物上一回合的格挡
     enemy->loseBlock();
@@ -558,8 +569,15 @@ void BattleEngine::processNextEnemyAction(int index) {
     // 🔴 4. 死亡拦截：防鞭尸机制！
     // ========================================================
     if (m_player->isDead()) {
-        emit battleEnded(false);
-        return;
+        qDebug() << "[Engine] Player died... playing death animation before Game Over.";
+
+        // ==========================================================
+        // ⏳ 魔法修复：给主角留足倒地变黑的时间（1.5 秒后），再宣布失败！
+        // ==========================================================
+        QTimer::singleShot(1500, this, [this]() {
+            emit battleEnded(false);
+        });
+        return; // 主角阵亡，停止递归！
     }
 
     // ========================================================
