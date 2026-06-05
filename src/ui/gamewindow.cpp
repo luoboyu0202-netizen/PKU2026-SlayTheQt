@@ -704,17 +704,13 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
         }
 
         // ========================================================
-        // 🌟 魔法 3：攔截卡牌獲取 (如果有對應訊號)
+        // 🌟 魔法 3：攔截卡牌獲取 (静默处理)
         // ========================================================
         if (launcher->getCardManager()) {
             connect(launcher->getCardManager(), &CardManager::cardInsertedToDiscard, this, [this](Card* c) {
-                // 飛向右上角的計牌器！
-                // 由於是 1920 場景座標，起點定在中央 (960, 540)，終點定在右上角 (1400, 50)
-                // 注意：playLootMeteor 接收的是 QPoint (物理像素)，需要轉換或適配
-                // 這裡我們直接傳入大概位置
-                playLootMeteor(c->getImagePath(), QPoint(800, 450), QPoint(1400, 50), [this]() {
-                    m_topBar->refreshDeckCount();
-                });
+                Q_UNUSED(c);
+                // 🔴 范式修改：问号事件中的卡牌获取全部静默处理，不再播放飞行流星动画
+                m_topBar->refreshDeckCount();
             });
         }
 

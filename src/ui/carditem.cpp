@@ -109,6 +109,8 @@ void CardItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
     case CardType::Attack: borderColor = QColor(220, 50, 50); break;
     case CardType::Skill:  borderColor = QColor(50, 200, 100); break;
     case CardType::Power:  borderColor = QColor(50, 150, 250); break;
+    case CardType::Status: borderColor = QColor(160, 160, 160); break; // 状态牌：灰色
+    case CardType::Curse:  borderColor = QColor(100, 50, 150); break;  // 诅咒牌：深紫色
     default: borderColor = Qt::gray;
     }
 

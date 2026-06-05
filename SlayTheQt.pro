@@ -84,6 +84,7 @@ HEADERS += \
     src/entities/cards/PourCard.h \
     src/entities/cards/PummelCard.h \
     src/entities/cards/ReaperCard.h \
+    src/entities/cards/RegretCard.h \
     src/entities/cards/SecondWindCard.h \
     src/entities/cards/ShrugItOffCard.h \
     src/entities/cards/SlimedCard.h \
