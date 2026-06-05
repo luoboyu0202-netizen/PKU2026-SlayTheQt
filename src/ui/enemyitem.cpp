@@ -406,20 +406,6 @@ void EnemyItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         }
         break;
 
-    case IntentType::AttackAndDebuff:
-        if (currentDisplayValue <= 5) {
-            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_1.png");
-        } else if (currentDisplayValue <= 10) {
-            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_2.png");
-        } else if (currentDisplayValue <= 15) {
-            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_3.png");
-        } else if (currentDisplayValue <= 20) {
-            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_4.png");
-        } else if (currentDisplayValue <= 25) {
-            intentIcon = getCachedIcon(":/resources/images/intents/attack_debuff_5.png");
-        }
-        break;
-
     case IntentType::AttackAndDefend:
         if (currentDisplayValue <= 5) {
             intentIcon = getCachedIcon(":/resources/images/intents/attack_defend_1.png");
@@ -658,4 +644,39 @@ void EnemyItem::playDeathAnimation() {
 
     // 启动！
     deathGroup->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+// ========================================================
+// ✂️ 精准切割：把 600x600 的巨无霸碰撞箱，削减为真实的肉体！
+// ========================================================
+QPainterPath EnemyItem::shape() const {
+    QPainterPath path;
+
+    // 1. 获取怪物真实的缩放肉体尺寸
+    int baseHeight = 200;
+    int enemyH = static_cast<int>(baseHeight * m_logicEnemy->getScaleFactor());
+    int enemyW = enemyH;
+
+    if (!m_enemyPixmap.isNull()) {
+        qreal aspectRatio = static_cast<qreal>(m_enemyPixmap.width()) / m_enemyPixmap.height();
+        enemyW = static_cast<int>(enemyH * aspectRatio);
+    }
+
+    // 🟢 区域 A：真实的怪物肉体图像区域
+    path.addRect(-enemyW / 2, -enemyH + m_spriteYOffset, enemyW, enemyH);
+
+    // 🟢 区域 B：底部的血条与护甲区域（让玩家鼠标指到血条也能查看意图）
+    int barW = 150;
+    int barH = 18;
+    int barX = -barW / 2;
+    int barY = 15;
+    // 稍微给血条区域加一点点击宽容度 (向下延伸包住名字)
+    path.addRect(barX - 20, barY - 10, barW + 40, barH + 40);
+
+    // 🟢 区域 C：头顶的意图气泡区域（精准包裹 76x76 的图标）
+    int intentY = -enemyH - 60 + m_spriteYOffset + m_intentFloatOffset;
+    int iconSize = 76;
+    path.addRect(-(iconSize / 2), intentY, iconSize, iconSize);
+
+    return path;
 }

@@ -78,7 +78,7 @@ BattleView* BattleLauncher::launch(const BattleContext& context) {
 
             // 🔴 使用极其丝滑的枚举进行掉落判断！
             if (context.nodeType == NodeType::Boss) {
-                result.rewardGold = 100;
+                result.rewardGold = QRandomGenerator::global()->bounded(80, 121);
                 // 🎲 Boss 掉落高级遗物盲盒
                 QString droppedRelic = RelicFactory::generateRandomRelic(save->relicIds);
                 if (!droppedRelic.isEmpty()) {
@@ -86,7 +86,7 @@ BattleView* BattleLauncher::launch(const BattleContext& context) {
                 }
             }
             else if (context.nodeType == NodeType::Elite) {
-                result.rewardGold = 30;
+                result.rewardGold = QRandomGenerator::global()->bounded(25, 40);
                 // 🎲 精英怪掉落遗物盲盒
                 QString droppedRelic = RelicFactory::generateRandomRelic(save->relicIds);
                 if (!droppedRelic.isEmpty()) {
@@ -95,7 +95,7 @@ BattleView* BattleLauncher::launch(const BattleContext& context) {
             }
             else {
                 // 普通怪 (NodeType::Monster 等) 通常只掉落金币和卡牌，不掉遗物
-                result.rewardGold = 15;
+                result.rewardGold = QRandomGenerator::global()->bounded(10, 20);
             }
         }
 

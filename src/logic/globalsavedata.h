@@ -29,7 +29,7 @@ public:
     // 主角全局基础属性
     int currentHp = 80;
     int maxHp = 80;
-    int gold = 999;
+    int gold = 99;
     int maxEnergy = 3;
     int cardRemovalCost = 75;
 
@@ -44,7 +44,7 @@ public:
     // 初始化新游戏的初始状态
     void initNewGame() {
         currentHp = 80;
-        gold = 999;
+        gold = 99;
         cardRemovalCost = 75;
         deckIds.clear();
         relicIds.clear();

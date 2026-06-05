@@ -44,9 +44,9 @@ void MapManager::generateMapNodes() {
                 node.type = NodeType::Campfire;
             } else {
                 int randVal = QRandomGenerator::global()->bounded(100);
-                if (randVal < 20) node.type = NodeType::Monster;
-                else if (randVal < 30) node.type = NodeType::Elite; // 稍微調整機率
-                else if (randVal < 40) node.type = NodeType::Shop;  // 🔴 商店華麗登場！(10%機率)
+                if (randVal < 30) node.type = NodeType::Monster;
+                else if (randVal < 35) node.type = NodeType::Elite; // 稍微調整機率
+                else if (randVal < 45) node.type = NodeType::Shop;  // 🔴 商店華麗登場！(10%機率)
                 else if (randVal < 90) {
                     // 將部分機率分給寶箱或事件
                     int r = QRandomGenerator::global()->bounded(100);

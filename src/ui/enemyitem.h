@@ -22,6 +22,8 @@ public:
     Enemy* getLogicEnemy() const { return m_logicEnemy; }
 
     QRectF boundingRect() const override;
+    QPainterPath shape() const override;
+
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override;
 
     bool m_isTargeted; // 【新增】标记当前怪物是否被箭头指着
