@@ -55,10 +55,10 @@ void BigFishView::onBoxChosen() {
         }
     }
 
-    // 临时逻辑：默认先给一张“打击”作为诅咒占位
-    Card* placeholderCurse = CardFactory::createCard("Strike_R", this);
-    if (placeholderCurse) {
-        m_cardManager->addCardToDiscardPile(placeholderCurse);
+    // 发放真正的悔恨诅咒
+    Card* regretCurse = CardFactory::createCard("card_regret", this);
+    if (regretCurse) {
+        m_cardManager->addCardToDiscardPile(regretCurse);
     }
 
     showEnding("你抓住了盒子，在里面找到了一个<b>遗物</b>！\n可是，你真的很想吃那个甜甜圈……\n你的心中充满了<b>悲伤</b>，尤其是一份<b>悔恨</b>。");

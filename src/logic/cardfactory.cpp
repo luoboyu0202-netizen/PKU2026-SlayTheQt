@@ -30,6 +30,8 @@
 #include "entities/cards/BurnCard.h"
 #include "entities/cards/WoundCard.h"
 #include "entities/cards/SlimedCard.h"
+#include "entities/cards/DoubtCard.h"
+#include "entities/cards/RegretCard.h"
 
 #include "entities/cards/testcard.h"
 
@@ -104,6 +106,8 @@ Card* CardFactory::createCard(const QString& cardId1, QObject* parent) {
     if (cardId == "card_burn") card = new BurnCard(parent);
     if (cardId == "card_wound") card = new WoundCard(parent);
     if (cardId == "card_slimed") card = new SlimedCard(parent);
+    if (cardId == "card_doubt") card = new DoubtCard(parent);
+    if (cardId == "card_regret") card = new RegretCard(parent);
 
     if (cardId == "card_test") card = new testcard(parent);
 
