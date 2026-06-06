@@ -752,7 +752,7 @@ void GameWindow::enterChestEvent() {
 void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
 
     // ========================================================
-    // 🎲 1. 頂層截胡：商店與寶箱的絕對機率 (保持不變)
+    // 🎲 1. 頂層截胡：商店與寶箱的絕對機率
     // ========================================================
     int roll = QRandomGenerator::global()->bounded(100);
     if (roll < 3) {
@@ -768,27 +768,24 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
 
     qDebug() << "[GameWindow] 踏入未知！准备降下黑幕...";
     GlobalSaveData* save = GlobalSaveData::getInstance();
-    EventContext ctx;
-    ctx.eventType = EventType::QuestionMark;
-    ctx.currentLayer = node.layer;
+
+    // 🔴 核心修复 1：创建一个专门的变量来存储最终决定的事件 ID
+    QString chosenEventId;
 
     // ========================================================
     // ⚔️ 2. 動態怪物機率 (殺戮尖塔正宗 PRD)
-    // 初始 10%，每次沒遇到就 +10%，遇到就重置回 10%
     // ========================================================
     int monsterRoll = QRandomGenerator::global()->bounded(100);
     if (monsterRoll < save->questionMarkMonsterChance) {
-        ctx.eventSubtype = "MonsterEncounter";
-        save->questionMarkMonsterChance = 10; // 🔴 遇到怪物了，機率重置！
+        chosenEventId = "MonsterEncounter";
+        save->questionMarkMonsterChance = 10; // 重置機率
         qDebug() << "🎲 運氣不好！觸發遭遇戰。下次怪物機率重置為 10%";
     }
     else {
-        // 🔴 沒遇到怪物，下次遇到怪物的機率增加 10%！
         save->questionMarkMonsterChance += 10;
 
         // ========================================================
         // 📜 3. 故事事件的「抽獎袋 (Grab Bag)」機制
-        // 抽過就不會再出現，直到袋子空了才重新洗牌！
         // ========================================================
         if (save->availableEvents.isEmpty()) {
             qDebug() << "🎲 事件袋已空，重新進貨洗牌！";
@@ -797,19 +794,14 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
             };
         }
 
-        // 從袋子裡隨機盲抽一個
         int eventIndex = QRandomGenerator::global()->bounded(save->availableEvents.size());
-        ctx.eventSubtype = save->availableEvents[eventIndex];
-
-        // 🔴 抽走之後立刻從袋子裡剔除，保證短期內絕對不重複！
+        chosenEventId = save->availableEvents[eventIndex];
         save->availableEvents.removeAt(eventIndex);
 
-        qDebug() << "🎲 盲盒開啟！本次搖中：" << ctx.eventSubtype
+        qDebug() << "🎲 盲盒開啟！本次搖中：" << chosenEventId
                  << " | 剩餘未觸發事件數：" << save->availableEvents.size()
                  << " | 下次怪物機率升至：" << save->questionMarkMonsterChance << "%";
     }
-
-    qDebug() << "[GameWindow] 踏入未知！准备降下黑幕...";
 
     m_curtain->raise();
     m_curtain->show();
@@ -818,8 +810,9 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
     m_fadeAnimation->setEndValue(1.0);
     m_fadeAnimation->disconnect();
 
-    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, node]() {
-        // 1. 构建输入合同 (Context)
+    // 🔴 核心修复 2：把 chosenEventId 塞进方括号里，让里面的闭包能使用它！
+    connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this, node, chosenEventId]() {
+        // 构建输入合同 (Context)
         GlobalSaveData* save = GlobalSaveData::getInstance();
         EventContext ctx;
         ctx.currentHp = save->currentHp;
@@ -827,31 +820,10 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
         ctx.gold = save->gold;
         ctx.maxEnergy = save->maxEnergy;
         ctx.eventType = EventType::QuestionMark;
-        ctx.currentLayer = node.layer; // 确保战斗层数正确
-        // ========================================================
-        // 替換後：🔴 啟動真正的問號隨機搖獎！
-        // ========================================================
-        // 如果你的地圖節點已經自帶了事件 ID (且不為空)，就優先用地圖的：
-        // if (!node.eventId.isEmpty()) {
-        //     ctx.eventSubtype = node.eventId;
-        // } else {
+        ctx.currentLayer = node.layer;
 
-        // 🎲 否則，我們自己來搖骰子！
-        QStringList possibleEvents = {
-            "BigFish",           // 大魚 (我們剛才完美重構的那個！)
-            "Cleric",            // 牧師
-            "Designer",          // 設計師
-            "SelfNote",          // 牆上的洞
-            "GoldenWing",        // 金神像
-            "WorldOfGoop",       // 黏液世界 (New!)
-            "MonsterEncounter",  // 遭遇戰
-            "MonsterEncounter"   // (故意多放一個怪物，模擬原版 10%~20% 踩雷機率喵！)
-        };
-
-        int randomIndex = QRandomGenerator::global()->bounded(possibleEvents.size());
-        ctx.eventSubtype = possibleEvents[randomIndex];
-
-        qDebug() << "🎲 盲盒開啟！本次問號事件搖中了：" << ctx.eventSubtype;
+        // 🔴 核心修复 3：直接使用外面精心算好的结果！删掉下面那堆没用的随机池！
+        ctx.eventSubtype = chosenEventId;
 
         for (const QString& id : save->deckIds) {
             ctx.currentDeck.append(CardFactory::createCard(id, nullptr));
@@ -862,30 +834,14 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
 
         EventLauncher* launcher = new EventLauncher(this);
 
-        // ========================================================
-        // 🌟 魔法 1：血量/金幣的即時反饋！
-        // 因為我們已經綁定了 Player，沙盒裡只要 modifyGold 或 setHp，
-        // 你的 TopBar 就會自動刷新數值！
-        // ========================================================
         if (launcher->getPlayer()) {
             m_topBar->bindPlayer(launcher->getPlayer());
-
-            // 可選果汁感：如果你的 TopBar 有 playPulseEffect() 這種 UI 彈跳函數，可以在這裡接上！
-            // connect(launcher->getPlayer(), &Player::hpChanged, m_topBar, &TopBar::playHpPulse);
         }
 
-        // ========================================================
-        // 🌟 魔法 3：攔截卡牌獲取 (如果有對應訊號)
-        // ========================================================
         if (launcher->getCardManager()) {
             connect(launcher->getCardManager(), &CardManager::cardInsertedToDiscard, this, [this](Card* c) {
-                // 飛向右上角的計牌器！
-                // 由於是 1920 場景座標，起點定在中央 (960, 540)，終點定在右上角 (1400, 50)
-                // 注意：playLootMeteor 接收的是 QPoint (物理像素)，需要轉換或適配
-                // 這裡我們直接傳入大概位置
-                playLootMeteor(c->getImagePath(), QPoint(800, 450), QPoint(1400, 50), [this]() {
-                    m_topBar->refreshDeckCount();
-                });
+                Q_UNUSED(c);
+                m_topBar->refreshDeckCount();
             });
         }
 
@@ -895,10 +851,8 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
         connect(launcher, &EventLauncher::showEventViewRequest, this, [this](EventBaseView* view) {
             view->setParent(this);
             view->setGeometry(-5, -5, 1610, 910);
-
             m_stack->addWidget(view);
             m_stack->setCurrentWidget(view);
-
             view->raise();
             m_topBarView->raise();
             m_curtain->raise();
@@ -914,16 +868,13 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
         });
 
         // ========================================================
-        // 📡 接收器 2：触发了遭遇战！(修复黑屏与闪退的核心)
+        // 📡 接收器 2：触发了遭遇战！
         // ========================================================
         connect(launcher, &EventLauncher::showBattleViewRequest, this, [this](BattleView* view) {
-            // 🚨 救命拼图 1：登记战斗视图，供打赢后的战利品界面销毁使用
             m_currentBattleView = view;
-
             m_stack->addWidget(view);
             m_stack->setCurrentWidget(view);
 
-            // 🚨 救命拼图 2：必须把问号里生成的新玩家，绑定给顶栏！
             if (view->getEngine() && view->getEngine()->getPlayer()) {
                 m_topBar->bindPlayer(view->getEngine()->getPlayer());
             }
@@ -931,7 +882,6 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
             m_topBarView->raise();
             m_curtain->raise();
 
-            // 揭开黑幕，正式进入战斗
             m_fadeAnimation->disconnect();
             m_fadeAnimation->setStartValue(1.0);
             m_fadeAnimation->setEndValue(0.0);
@@ -942,12 +892,9 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
         });
 
         // ========================================================
-        // 📡 接收器 3：纯文字事件结束，忠实执行结算合同
+        // 📡 接收器 3：纯文字事件结束
         // ========================================================
         connect(launcher, &EventLauncher::eventConcluded, this, [this](EventResult result) {
-
-            // 🚨 救命修复 1：【立刻】结算数据！绝对不能放进动画的回呼函数里！
-            // 因为沙盒马上就要被销毁了，必须趁卡牌指针还活着，赶紧把 ID 记下来！
             GlobalSaveData* save = GlobalSaveData::getInstance();
             save->currentHp = result.remainingHp;
             save->maxHp = result.finalMaxHp;
@@ -962,14 +909,10 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
                 for (Relic* r : result.resultRelics) save->relicIds.append(r->getId());
             }
 
-            // 🚨 救命修复 2：【立刻】刷新顶栏！修复计牌器不更新的问题！
             m_topBar->updateGold(save->gold);
             m_topBar->updateHp(save->currentHp, save->maxHp);
             m_topBar->refreshDeckCount();
 
-            // ========================================================
-            // 然后才开始播放那 350ms 的退场黑幕动画 (此时数据已安全落袋)
-            // ========================================================
             m_curtain->raise();
             m_curtain->show();
             m_fadeAnimation->stop();
@@ -978,17 +921,16 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
             m_fadeAnimation->disconnect();
 
             connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
-                // 仅保留 UI 视图清理和地图推进
                 m_mapManager->m_currentLayer = m_lastClickedNode.layer;
                 m_mapManager->m_currentNodeId = m_lastClickedNode.id;
                 m_mapManager->m_visitedNodes.append(m_lastClickedNode.id);
                 m_mapManager->refreshNodeStates();
 
                 QWidget* currentEventWidget = m_stack->currentWidget();
-                m_stack->setCurrentIndex(1); // 回到大地图
+                m_stack->setCurrentIndex(1);
                 if (currentEventWidget != m_stack->widget(1)) {
                     m_stack->removeWidget(currentEventWidget);
-                    currentEventWidget->deleteLater(); // 👈 補上這句！GameWindow 親自優雅收屍！
+                    currentEventWidget->deleteLater();
                 }
 
                 m_fadeAnimation->disconnect();
@@ -1005,31 +947,20 @@ void GameWindow::enterQuestionMarkEvent(const MapNode& node) {
         // 📡 接收器 4：战斗打赢了！
         connect(launcher, &EventLauncher::battleEncounterFinished, this, &GameWindow::onBattleConcluded);
 
-        // ========================================================
-        // 🚀 先发射启动！让沙盒默默把旧卡牌和旧遗物加载好...
-        // 这期间不会触发任何流星！
-        // ========================================================
+        // 发射启动！
         launcher->launch(ctx);
 
-        // ========================================================
-        // 🌟 魔法 2：在沙盒就绪后，接上唯一合法的遗物监听天线！
-        // 只有你在事件中点击获得了【新遗物】，才会触发这门全域大炮！
-        // ========================================================
+        // 🌟 遗物监听天线
         if (launcher->getRelicManager()) {
             connect(launcher->getRelicManager(), &RelicManager::relicAdded, this, [this](Relic* r) {
-                // 從螢幕正中央 (800, 450) 發射
                 QPointF startPos(800, 450);
-
-                // 終點：計算它在 RelicTray 裡的下一個空位
                 int trayStartX = 10;
                 int trayStartY = 55;
                 int spacing = 8;
                 int currentIndex = m_globalRelics.size();
                 QPointF endPos(trayStartX + currentIndex * (48 + spacing) + 24, trayStartY + 24);
 
-                // 發射神級粒子特效！(藍色遺物軌跡)
                 playGlobalParticleEffect(startPos, endPos, "Relic", [this, r]() {
-                    // 🔴 必須等流星落地（onLanded 回呼），才真正將遺物加入頂欄！
                     r->setParent(this);
                     m_globalRelics.append(r);
                     m_globalRelicTray->setRelics(m_globalRelics);

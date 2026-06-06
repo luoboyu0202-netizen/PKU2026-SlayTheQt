@@ -19,7 +19,7 @@ public:
             recordMove(1); // 记录动作：1 代表上虚弱
         } else {
             // 第一回合，或上回合刚上完虚弱，这回合必定攻击 (7~8点)
-            int dmg = QRandomGenerator::global()->bounded(7, 9);
+            int dmg = QRandomGenerator::global()->bounded(4, 6);
             m_currentIntent = Intent(IntentType::Attack, dmg);
             recordMove(0); // 记录动作：0 代表攻击
         }

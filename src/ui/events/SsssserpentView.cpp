@@ -23,8 +23,8 @@ void SsssserpentView::setupContent() {
 void SsssserpentView::onAgree() {
     m_player->setGold(m_player->getGold() + 175);
     
-    // 暂时用打击牌替代疑虑诅咒
-    Card* doubtCurse = CardFactory::createCard("Strike_R", this);
+    // 发放真正的疑虑诅咒
+    Card* doubtCurse = CardFactory::createCard("card_doubt", this);
     if (doubtCurse) {
         m_cardManager->addCardToDiscardPile(doubtCurse);
     }

@@ -14,10 +14,10 @@ public:
         int turn = m_turnCounter % 4;
         switch (turn) {
         case 0:
-            m_currentIntent = Intent(IntentType::Summon, 2, StatusType::None, 0, "", "Slime_Small");
+            m_currentIntent = Intent(IntentType::Summon, 1, StatusType::None, 0, "", "Slime_Small");
             break;
         case 1:
-            m_currentIntent = Intent(IntentType::InsertStatus, 5, StatusType::None, 0, "card_slimed", "");
+            m_currentIntent = Intent(IntentType::InsertStatus, 3, StatusType::None, 0, "card_slimed", "");
             break;
         case 2:
             m_currentIntent = Intent(IntentType::AttackAndDebuff, 10, StatusType::Vulnerable, 3);

@@ -459,6 +459,8 @@ QList<Card*> CampfireView::allUpgradableCards() const {
             continue;
         }
 
+        if(c->getType()==CardType::Curse)continue;
+
         if (!c->isUpgraded()) {
             c->setProperty("original_id", cardId);
             result.append(c);
@@ -516,14 +518,14 @@ void CampfireView::showCardSelector(const QList<Card*>& candidates) {
 
     m_confirmBtn = new TextButton("确认升级", 200, 55);
     m_confirmBtn->setPos(1650, 940);
-    m_confirmBtn->setZValue(160);
+    m_confirmBtn->setZValue(300);
     m_confirmBtn->hide();
     m_scene->addItem(m_confirmBtn);
     connect(m_confirmBtn, &TextButton::clicked, this, &CampfireView::confirmUpgrade);
 
     m_cancelBtn = new TextButton("返回", 200, 55);
     m_cancelBtn->setPos(1400, 940);
-    m_cancelBtn->setZValue(160);
+    m_cancelBtn->setZValue(300);
     m_scene->addItem(m_cancelBtn);
     connect(m_cancelBtn, &TextButton::clicked, this, &CampfireView::cancelUpgrade);
 }
