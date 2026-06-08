@@ -19,8 +19,9 @@
 
 
 GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), m_currentBattleView(nullptr) {
-    // 1. 设置游戏主窗口大小
-    this->setFixedSize(1600, 900);
+    // 1. 设置游戏主窗口大小（支持缩放和全屏）
+    this->resize(1600, 900);
+    this->setMinimumSize(1280, 720);
     this->setWindowTitle("Slay the Qt");
 
     // 2. 搬来电视机！
@@ -64,7 +65,7 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
     // 🌟 全局悬浮图层 (包容 TopBar 和 你的完美 RelicTray)
     // ==========================================
     m_topBarView = new QGraphicsView(this);
-    m_topBarView->setFixedSize(1600, 110);
+    m_topBarView->resize(1600, 110);
     m_topBarView->move(0, 0);
 
     m_topBarView->setStyleSheet("background: transparent; border: none;");
@@ -114,7 +115,7 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
     // ⬛ 初始化全局黑幕
     // ==========================================
     m_curtain = new QWidget(this);
-    m_curtain->resize(1600, 900);
+    m_curtain->resize(this->size());
     m_curtain->setStyleSheet("background-color: #000000;");
     m_curtain->hide();
 
@@ -158,8 +159,9 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
     // 🌌 极其优雅的“呼吸式同步膨胀”！(牌库查看)
     // ========================================================
     connect(m_topBar, &TopBar::deckViewRequested, this, [this, topScene]() {
-        m_topBarView->setFixedSize(1600, 900);
-        topScene->setSceneRect(0, 0, 1600, 900);
+        int w = this->width();
+        m_topBarView->resize(w, 900);
+        topScene->setSceneRect(0, 0, w, 900);
 
         QList<QString> deckIds = GlobalSaveData::getInstance()->deckIds;
         QList<Card*> displayCards;
@@ -167,7 +169,7 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
             displayCards.append(CardFactory::createCard(id));
         }
 
-        CardBrowserOverlay* overlay = new CardBrowserOverlay(displayCards, "你的牌組", 1600, 900);
+        CardBrowserOverlay* overlay = new CardBrowserOverlay(displayCards, "你的牌組", w, 900);
         overlay->setZValue(9999);
         topScene->addItem(overlay);
 
@@ -176,8 +178,9 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
             overlay->deleteLater();
             qDeleteAll(displayCards);
 
-            m_topBarView->setFixedSize(1600, 110);
-            topScene->setSceneRect(0, 0, 1600, 110);
+            int w2 = this->width();
+            m_topBarView->resize(w2, 110);
+            topScene->setSceneRect(0, 0, w2, 110);
         });
     });
     // ========================================================
@@ -196,8 +199,35 @@ GameWindow::GameWindow(QWidget *parent) : QWidget(parent), m_launcher(nullptr), 
 
 }
 
+void GameWindow::resizeEvent(QResizeEvent* event) {
+    QWidget::resizeEvent(event);
+    int w = event->size().width();
+    // 黑幕和悬浮层跟随窗口大小
+    if (m_curtain) m_curtain->resize(event->size());
+    if (m_rewardScreen) m_rewardScreen->resize(event->size());
+    // 顶栏视图和场景跟随宽度
+    if (m_topBarView && m_topBarView->scene()) {
+        m_topBarView->resize(w, m_topBarView->height());
+        m_topBarView->scene()->setSceneRect(0, 0, w, m_topBarView->scene()->height());
+    }
+    if (m_topBar) m_topBar->setBarWidth(w);
+}
+
+QPointF GameWindow::deckPileGlobalPos() const {
+    if (!m_topBar) return QPointF(1370, 56);
+    QPointF scenePos = m_topBar->deckPileCenterScenePos();
+    QPoint viewPos = m_topBarView->mapFromScene(scenePos);
+    return m_topBarView->mapTo(this, viewPos);
+}
+
+QPointF GameWindow::goldIconGlobalPos() const {
+    if (!m_topBar) return QPointF(1200, 24);
+    qreal x = 1200.0 * m_topBar->barWidth() / 1600.0;
+    return QPointF(x, 24);
+}
+
 // ==========================================
-// 🎬 新增：处理“开始游戏”的黑场转场动画
+// 🎬 新增：处理”开始游戏”的黑场转场动画
 // ==========================================
 void GameWindow::handleStartGameTransition() {
     m_curtain->raise();
@@ -449,14 +479,16 @@ void GameWindow::playEndingAnimation() {
         // 字体大小调成32，居中对齐
         textLabel->setStyleSheet("color: white; font-size: 32px; font-family: 'FangSong'; font-weight: bold; background: transparent;");
         textLabel->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
-        textLabel->resize(1600, 3000); // 🔴 留出巨大的高度容纳长文本
-        textLabel->move(0, 900);       // 设置初始位置：沉在屏幕底部之外
+        int winW = this->width();
+        int winH = this->height();
+        textLabel->resize(winW, 3000); // 🔴 留出巨大的高度容纳长文本
+        textLabel->move(0, winH);      // 设置初始位置：沉在屏幕底部之外
         textLabel->show();
 
         // 3. 创建极度平滑的滚动动画
         QPropertyAnimation* scrollAnim = new QPropertyAnimation(textLabel, "pos", textLabel);
         scrollAnim->setDuration(20000); // 🔴 滚动时长设为 20 秒，慢慢放
-        scrollAnim->setStartValue(QPoint(0, 900));
+        scrollAnim->setStartValue(QPoint(0, winH));
         scrollAnim->setEndValue(QPoint(0, -1500)); // 🔴 终点拉得更高，确保字完全滚出去
 
         // 4. 动画结束后的清场收尾逻辑
@@ -1011,13 +1043,13 @@ void GameWindow::playGlobalParticleEffect(QPointF startPos, QPointF endPos, cons
     // 🔮 跨次元結界！覆蓋在整個 GameWindow 之上
     // ========================================================
     QGraphicsView* fxView = new QGraphicsView(this); // 直接掛在 GameWindow 上
-    fxView->resize(1600, 900);
+    fxView->resize(this->size());
     fxView->setStyleSheet("background: transparent; border: none;");
     fxView->setAttribute(Qt::WA_TransparentForMouseEvents);
     fxView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     fxView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    QGraphicsScene* fxScene = new QGraphicsScene(0, 0, 1600, 900, fxView);
+    QGraphicsScene* fxScene = new QGraphicsScene(0, 0, this->width(), this->height(), fxView);
     fxView->setScene(fxScene);
     fxView->show();
     fxView->raise(); // 🔴 絕對壓制，蓋過所有事件視窗和 TopBar！
@@ -1194,6 +1226,9 @@ void GameWindow::handleContinueGameTransition() {
         m_topBar->refreshDeckCount();
         refreshTopBarRelics(); // 重新生成上次存档的遗物！
 
+        // 🔴 恢复地图进度 (必须在切换前执行)
+        m_mapManager->restoreMapState();
+
         // 🔴 2. 切换到频道 1（大地图），并唤醒顶栏
         m_stack->setCurrentIndex(1);
         m_topBarView->show();
@@ -1226,7 +1261,11 @@ void GameWindow::handleReturnToTitle() {
     m_fadeAnimation->disconnect();
 
     connect(m_fadeAnimation, &QPropertyAnimation::finished, this, [this]() {
-        // 🔴 1. 隐藏战斗用的悬浮顶栏
+        // 🔴 1. 保存地图进度 (必须在saveToFile前执行)
+        m_mapManager->saveMapState();
+        GlobalSaveData::getInstance()->saveToFile();
+
+        // 🔴 2. 隐藏战斗用的悬浮顶栏
         m_topBarView->hide();
         m_rewardScreen->hide();
 

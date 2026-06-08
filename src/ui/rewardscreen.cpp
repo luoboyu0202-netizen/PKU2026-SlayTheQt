@@ -1,4 +1,5 @@
 #include "RewardScreen.h"
+#include "GameWindow.h"
 #include "../logic/GlobalSaveData.h"
 #include <QDebug>
 #include "logic/cardfactory.h"
@@ -53,7 +54,7 @@ RewardItemButton::RewardItemButton(RewardType type, const QString& text, QWidget
 // ==========================================
 RewardScreen::RewardScreen(QWidget *parent) : QWidget(parent) {
     // 1. 铺满整个屏幕的半透明黑纱（这就是保留战斗背景的秘诀！）
-    this->setFixedSize(1600, 900);
+    this->resize(parent ? parent->width() : 1600, parent ? parent->height() : 900);
     this->setStyleSheet("RewardScreen { background-color: rgba(0, 0, 0, 160); }"); // 160透明度，隐约透出后面的怪和背景
 
     // 2. 制作那块砸下来的“黑板”
@@ -249,8 +250,10 @@ void RewardScreen::animateAndRemoveItem(RewardItemButton* btn) {
     QPoint targetPos;
     GlobalSaveData* save = GlobalSaveData::getInstance();
 
+    GameWindow* gw = qobject_cast<GameWindow*>(this->parentWidget());
     if (type == RewardItemButton::Gold) {
-        targetPos = QPoint(1200, 24); // 顶栏金币位置
+        // 🔴 金币飞行终点：跟随顶栏金币图标动态位置
+        targetPos = gw ? gw->goldIconGlobalPos().toPoint() : QPoint(1200, 24);
     }
     else if (type == RewardItemButton::Relic) {
         // 🔴 极其聪明的位置预判：计算它将要落入 RelicTray 的哪个槽位
@@ -264,7 +267,8 @@ void RewardScreen::animateAndRemoveItem(RewardItemButton* btn) {
         targetPos = QPoint(trayStartX + currentRelicIndex * (48 + spacing) + 24, trayStartY + 24);
     }
     else {
-        targetPos = QPoint(1400, 24); // 顶栏牌库位置
+        // 🔴 卡牌飞行终点：跟随牌堆图标动态位置
+        targetPos = gw ? gw->deckPileGlobalPos().toPoint() : QPoint(1370, 56);
     }
 
     // ==========================================

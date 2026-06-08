@@ -8,6 +8,7 @@
 #include <QGraphicsBlurEffect>
 #include <QRandomGenerator>
 #include <QPainterPath>
+#include "../GameWindow.h"
 #include <QRadialGradient>
 #include <QLinearGradient>
 #include <QPen>
@@ -691,7 +692,16 @@ void CampfireView::runUpgradeAnimation(Card* card) {
 
         auto* flyMove = new QPropertyAnimation(newAnimCard, "pos");
         flyMove->setDuration(600);
-        flyMove->setEndValue(QPointF(1750, 60));
+        // 🔴 动态终点：映射牌堆全局坐标到场景坐标
+        GameWindow* gw = qobject_cast<GameWindow*>(this->window());
+        QPointF flyTarget;
+        if (gw) {
+            QPoint globalPos = gw->deckPileGlobalPos().toPoint();
+            flyTarget = this->mapToScene(this->mapFromParent(globalPos));
+        } else {
+            flyTarget = QPointF(1750, 60);
+        }
+        flyMove->setEndValue(flyTarget);
         flyMove->setEasingCurve(QEasingCurve::InBack);
         flyAway->addAnimation(flyMove);
 

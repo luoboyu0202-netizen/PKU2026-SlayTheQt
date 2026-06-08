@@ -345,3 +345,125 @@ void MapManager::resetMap() {
     refreshNodeStates(); // 重新计算哪些节点可以点击
     update();            // 触发重绘
 }
+
+void MapManager::saveMapState() {
+    GlobalSaveData* save = GlobalSaveData::getInstance();
+    save->mapCurrentLayer = m_currentLayer;
+    save->mapCurrentNodeId = m_currentNodeId;
+    save->mapVisitedNodes = m_visitedNodes;
+
+    // 序列化地图节点数据
+    QJsonObject layersObj;
+    for (int layer = 0; layer < m_mapData.size(); ++layer) {
+        QJsonArray nodesArr;
+        for (const MapNode& node : m_mapData[layer]) {
+            QJsonObject nodeObj;
+            nodeObj["id"] = node.id;
+            nodeObj["layer"] = node.layer;
+            nodeObj["position"] = node.position;
+            nodeObj["type"] = static_cast<int>(node.type);
+            nodeObj["uiX"] = node.uiX;
+            nodeObj["uiY"] = node.uiY;
+            QJsonArray nextArr;
+            for (int nid : node.nextNodes) { nextArr.append(nid); }
+            nodeObj["nextNodes"] = nextArr;
+            nodesArr.append(nodeObj);
+        }
+        layersObj[QString::number(layer)] = nodesArr;
+    }
+    save->mapLayersJson = layersObj;
+
+    qDebug() << "[MapManager] 地图已保存，当前层:" << m_currentLayer << "已访问节点:" << m_visitedNodes.size();
+}
+
+void MapManager::restoreMapState() {
+    GlobalSaveData* save = GlobalSaveData::getInstance();
+    if (save->mapLayersJson.isEmpty()) {
+        qDebug() << "[MapManager] 无存档地图数据，保持新生成的地图";
+        return;
+    }
+
+    // 1. 消灭现有的所有按钮
+    QList<QPushButton*> oldButtons = this->findChildren<QPushButton*>();
+    for (QPushButton* btn : oldButtons) {
+        btn->hide();
+        btn->deleteLater();
+    }
+
+    // 2. 从 JSON 重建地图数据
+    m_mapData.clear();
+    m_nodeButtons.clear();
+    QJsonObject layersObj = save->mapLayersJson;
+
+    for (int layer = 0; layersObj.contains(QString::number(layer)); ++layer) {
+        QJsonArray nodesArr = layersObj[QString::number(layer)].toArray();
+        QList<MapNode> layerNodes;
+        for (int i = 0; i < nodesArr.size(); ++i) {
+            QJsonObject nodeObj = nodesArr[i].toObject();
+            MapNode node;
+            node.id = nodeObj["id"].toInt();
+            node.layer = nodeObj["layer"].toInt();
+            node.position = nodeObj["position"].toInt();
+            node.type = static_cast<NodeType>(nodeObj["type"].toInt());
+            node.uiX = nodeObj["uiX"].toInt();
+            node.uiY = nodeObj["uiY"].toInt();
+            QJsonArray nextArr = nodeObj["nextNodes"].toArray();
+            for (int j = 0; j < nextArr.size(); ++j) {
+                node.nextNodes.append(nextArr[j].toInt());
+            }
+            layerNodes.append(node);
+        }
+        m_mapData.insert(layer, layerNodes);
+    }
+
+    // 3. 恢复状态
+    m_currentLayer = save->mapCurrentLayer;
+    m_currentNodeId = save->mapCurrentNodeId;
+    m_visitedNodes = save->mapVisitedNodes;
+
+    // 4. 重建按钮 (复用 generateMapNodes 中的逻辑)
+    for (int layer = 0; layer < m_mapData.size(); ++layer) {
+        for (const MapNode& node : m_mapData[layer]) {
+            QPushButton* btn = new QPushButton(this);
+            m_nodeButtons.insert(node.id, btn);
+
+            int iconWidth = 65;
+            int iconHeight = 65;
+            QString imagePath;
+            if (node.type == NodeType::Boss) {
+                imagePath = ":/resources/images/map_images/elite.png";
+                iconWidth = 100; iconHeight = 100;
+            } else if (node.type == NodeType::Campfire) {
+                imagePath = ":/resources/images/map_images/campfire.png";
+            } else if (node.type == NodeType::Chest) {
+                imagePath = ":/resources/images/map_images/chest.png";
+            } else if (node.type == NodeType::Elite) {
+                imagePath = ":/resources/images/map_images/elite.png";
+                iconWidth = 80; iconHeight = 80;
+            } else if (node.type == NodeType::Event) {
+                imagePath = ":/resources/images/map_images/event.png";
+            } else if (node.type == NodeType::Shop) {
+                imagePath = ":/resources/images/map_images/merchant.png";
+            } else {
+                imagePath = ":/resources/images/map_images/monster.png";
+            }
+
+            btn->setGeometry(node.uiX - (iconWidth - 65)/2, node.uiY - (iconHeight - 45)/2, iconWidth, iconHeight);
+            QString styleSheet = QString(
+                "QPushButton { border-image: url(%1); background-color: transparent; }").arg(imagePath);
+            btn->setStyleSheet(styleSheet);
+            btn->setText("");
+            btn->setProperty("baseGeometry", btn->geometry());
+            btn->installEventFilter(this);
+
+            connect(btn, &QPushButton::clicked, this, [this, node]() {
+                this->triggerNode(node);
+            });
+            btn->show();
+        }
+    }
+
+    refreshNodeStates();
+    update();
+    qDebug() << "[MapManager] 地图已恢复，当前层:" << m_currentLayer << "已访问节点:" << m_visitedNodes.size();
+}

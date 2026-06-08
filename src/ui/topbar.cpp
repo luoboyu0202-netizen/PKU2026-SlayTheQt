@@ -15,14 +15,26 @@ TopBar::TopBar(QGraphicsItem* parent)
     // ========================================================
     m_masterDeckPile = new PileItem("总牌组", this);
 
-    // 🔴 极其精确的狙击：完美对齐我们在 RewardScreen 写的终点坐标！
-    m_masterDeckPile->setPos(1400, 32);
-
-    // 连通点击神经
+    // 初始化牌堆和退出按钮（位置由 setBarWidth 动态计算）
     connect(m_masterDeckPile, &PileItem::clicked, this, &TopBar::onDeckPileClicked);
+    setBarWidth(1600);
+}
 
-    // 初始化退出按钮的位置 (右上角区域)
-    m_exitBtnRect = QRectF(1450, 10, 120, 30);
+void TopBar::setBarWidth(qreal width) {
+    m_barWidth = width;
+    // 比例缩放：金币位置随宽度等比例移动
+    qreal scale = width / 1600.0;
+    m_goldX = 1200.0 * scale;
+    // 右侧锚定：牌堆与退出按钮间距拉大 (deck at -230, exit at -120)
+    m_masterDeckPile->setPos(width - 230, 32);
+    m_exitBtnRect = QRectF(width - 120, 10, 110, 30);
+    prepareGeometryChange();
+    update();
+}
+
+QPointF TopBar::deckPileCenterScenePos() const {
+    QRectF r = m_masterDeckPile->sceneBoundingRect();
+    return r.center();
 }
 
 void TopBar::bindPlayer(Player* player) {
@@ -50,19 +62,19 @@ void TopBar::updateEnergy(int current, int max) { m_energy = current; m_maxEnerg
 void TopBar::updateGold(int current) { m_gold = current; update(); }
 
 QRectF TopBar::boundingRect() const {
-    return QRectF(0, 0, 1600, 60);
+    return QRectF(0, 0, m_barWidth, 60);
 }
 
 void TopBar::paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) {
     painter->setRenderHint(QPainter::Antialiasing);
 
-    // ---- 深黑褐背景 ----
-    painter->fillRect(QRectF(0, 0, 1600, 48), QColor(45, 38, 30, 255));
+    // ---- 深黑褐背景（动态宽度） ----
+    painter->fillRect(QRectF(0, 0, m_barWidth, 48), QColor(45, 38, 30, 255));
 
     painter->setPen(QPen(QColor(220, 180, 100), 2));
-    painter->drawLine(0, 0, 1600, 0);
+    painter->drawLine(0, 0, m_barWidth, 0);
     painter->setPen(QPen(QColor(180, 150, 100), 1.5));
-    painter->drawLine(0, 48, 1600, 48);
+    painter->drawLine(0, 48, m_barWidth, 48);
     painter->setFont(m_uiFont);
 
     // ---- 1. 角色名称 ----
@@ -85,14 +97,13 @@ void TopBar::paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*)
     QString hpText = QString("%1 / %2").arg(m_hp).arg(m_maxHp);
     painter->drawText(QRectF(hx + 20, 0, 150, 48), Qt::AlignLeft | Qt::AlignVCenter, hpText);
 
-    // ---- 3. 金币 (🔴 挪到 X=1200 的位置，完美避开 1400 的牌库) ----
+    // ---- 3. 金币（位置随宽度等比例缩放）----
     painter->setBrush(QColor(230, 190, 50));
     painter->setPen(QPen(QColor(160, 120, 20), 1.5));
-    painter->drawEllipse(QPointF(1200, 24), 8, 8);
+    painter->drawEllipse(QPointF(m_goldX, 24), 8, 8);
 
     painter->setPen(QColor(230, 190, 50));
-    // 文字也跟着挪过来
-    painter->drawText(QRectF(1215, 0, 100, 48), Qt::AlignLeft | Qt::AlignVCenter, QString::number(m_gold));
+    painter->drawText(QRectF(m_goldX + 15, 0, 100, 48), Qt::AlignLeft | Qt::AlignVCenter, QString::number(m_gold));
 
     // 🔴 【新增】绘制“保存并退出”按钮
     painter->setBrush(QColor(60, 40, 40, 200)); // 按钮底色

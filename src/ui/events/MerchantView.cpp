@@ -19,6 +19,7 @@
 #include <cmath>
 #include "ui/RelicItem.h" // 🔴 必须引入我们的 3A 级遗物类！（请确认路径是否正确喵）
 #include <QPropertyAnimation>
+#include "../GameWindow.h"
 
 namespace {
 constexpr qreal kShopCardW = 170.0;
@@ -813,7 +814,9 @@ void MerchantView::playPurchaseEffect(QGraphicsItem* item, const QPointF& center
         int spacing = 8;
         endPos = QPointF(trayStartX + currentIndex * (48 + spacing) + 24, trayStartY + 24);
     } else {
-        endPos = QPointF(1400, 24);
+        // 🔴 卡牌飞行终点跟随牌堆图标动态位置
+        GameWindow* gw = qobject_cast<GameWindow*>(this->window());
+        endPos = gw ? gw->deckPileGlobalPos() : QPointF(1370, 56);
     }
 
     QPointF ctrlPos(startPos.x() + (endPos.x() - startPos.x()) * 0.4, startPos.y() - 300);

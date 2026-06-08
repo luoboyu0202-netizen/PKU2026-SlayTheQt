@@ -30,6 +30,11 @@ public:
 
     void resetMap(); // 🔴 新增：重置大地图进度
 
+    // 🔴 保存当前地图状态到 GlobalSaveData
+    void saveMapState();
+    // 🔴 从 GlobalSaveData 恢复地图 (删除现有按钮并重建)
+    void restoreMapState();
+
 protected:
     void paintEvent(QPaintEvent *event) override;
 

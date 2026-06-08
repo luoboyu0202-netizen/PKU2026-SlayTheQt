@@ -41,6 +41,14 @@ public:
     QList<QString> deckIds;
     QList<QString> relicIds;
 
+    // ========================================================
+    // 🗺️ 地图存档数据
+    // ========================================================
+    int mapCurrentLayer = -1;
+    int mapCurrentNodeId = -1;
+    QList<int> mapVisitedNodes;
+    QJsonObject mapLayersJson; // 保存各层节点信息 (供 MapManager 恢复)
+
     // 初始化新游戏的初始状态
     void initNewGame() {
         currentHp = 80;
@@ -64,6 +72,12 @@ public:
 
         // 初始遗物 ID (参考你 RelicFactory 的可用 ID)
         relicIds.append("relic_burning_blood");
+
+        // 清空地图存档数据 (新游戏不应继承旧存档的地图)
+        mapCurrentLayer = -1;
+        mapCurrentNodeId = -1;
+        mapVisitedNodes.clear();
+        mapLayersJson = QJsonObject();
 
     }
 
@@ -109,6 +123,14 @@ public:
         for (const QString& id : relicIds) { relicArray.append(id); }
         rootObj["relicIds"] = relicArray;
 
+        // 保存地图进度
+        rootObj["mapCurrentLayer"] = mapCurrentLayer;
+        rootObj["mapCurrentNodeId"] = mapCurrentNodeId;
+        QJsonArray visitedArr;
+        for (int id : mapVisitedNodes) { visitedArr.append(id); }
+        rootObj["mapVisitedNodes"] = visitedArr;
+        rootObj["mapLayers"] = mapLayersJson;
+
         // 写入文件
         QJsonDocument doc(rootObj);
         QFile file(getSaveFilePath());
@@ -153,7 +175,17 @@ public:
             relicIds.append(relicArray[i].toString());
         }
 
-        qDebug() << "[存档系统] 读档成功！当前HP:" << currentHp << "卡牌数量:" << deckIds.size();
+        // 恢复地图进度
+        mapCurrentLayer = rootObj["mapCurrentLayer"].toInt(-1);
+        mapCurrentNodeId = rootObj["mapCurrentNodeId"].toInt(-1);
+        mapVisitedNodes.clear();
+        QJsonArray visitedArr = rootObj["mapVisitedNodes"].toArray();
+        for (int i = 0; i < visitedArr.size(); ++i) {
+            mapVisitedNodes.append(visitedArr[i].toInt());
+        }
+        mapLayersJson = rootObj["mapLayers"].toObject();
+
+        qDebug() << "[存档系统] 读档成功！当前HP:" << currentHp << "卡牌数量:" << deckIds.size() << "地图层:" << mapCurrentLayer;
     }
 
 private:

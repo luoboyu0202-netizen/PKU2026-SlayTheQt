@@ -21,8 +21,16 @@ class GameWindow : public QWidget {
 public:
     explicit GameWindow(QWidget *parent = nullptr);
 
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
+public:
     // 在 GameWindow 中新增这个函数
     void refreshTopBarRelics();
+
+    // 🔴 暴露图标在窗口中的全局坐标（供飞行动画定位）
+    QPointF deckPileGlobalPos() const;
+    QPointF goldIconGlobalPos() const;
 
     // 全域粒子流星大砲！
     // type: "Relic" (藍色), "Card" (紫色), "Gold" (金色)

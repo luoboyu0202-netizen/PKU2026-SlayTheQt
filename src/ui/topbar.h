@@ -10,6 +10,12 @@ public:
     explicit TopBar(QGraphicsItem* parent = nullptr);
     virtual ~TopBar() = default;
 
+    // 设置顶栏动态宽度（用于全屏/窗口缩放）
+    void setBarWidth(qreal width);
+    qreal barWidth() const { return m_barWidth; }
+    // 返回牌堆图标中心点（场景坐标），供飞行动画定位
+    QPointF deckPileCenterScenePos() const;
+
     // 核心契约：绑定底层数据实体
     void bindPlayer(Player* player);
     // ========================================================
@@ -58,4 +64,6 @@ private:
     PileItem* m_masterDeckPile;
 
     QRectF m_exitBtnRect; // 🔴 退出按钮的碰撞箱
+    qreal m_barWidth = 1600; // 顶栏动态宽度
+    qreal m_goldX = 1200;    // 金币图标X（随宽度等比例缩放）
 };
