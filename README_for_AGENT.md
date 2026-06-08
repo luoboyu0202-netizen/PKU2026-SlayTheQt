@@ -151,10 +151,22 @@ SmoothStone / Torii / MeatOnTheBone / OrnamentalFan / TungstenRod
 - **TopBar**: 队友文件，测试模式下用 `setScale(1.2)` 适配 1920 场景，不对原文件做侵入修改
 - **卡牌/遗物/敌人**: 头文件 only 定义，无 `Q_OBJECT` 宏以防链接错误
 - **Merchant**: 购买卡牌/遗物保留流星动画 (紫色/蓝色轨迹飞向顶部)
+- **存档系统**: `savegame.json` 落盘存档，保存 HP/金币/牌组/遗物/地图进度。新游戏自动清空旧存档
+- **地图持久化**: 存档时序列化全部节点（id/类型/坐标/连线/已访问状态），读档后精确重建
+
+---
+
+## 最近更新 (2026-06-08)
+
+- **全屏支持**: `setFixedSize` 改为 `resize` + `setMinimumSize`，`resizeEvent` 同步黑幕和悬浮层尺寸
+- **地图存档修复**: 修复"保存并退出后关卡重新生成"问题 — 地图节点数据完整序列化到 `savegame.json`
+- **SaveGameView**: 顶栏新增金币和计牌器图标显示 + 退出按钮样式优化
+- **CampfireView 数值微调**: 升级/休息按钮位置和特效修正
+- **RewardScreen**: 战利品面板自适应窗口尺寸
 
 ---
 
 ## 已知限制
 
-- **窗口不可全屏**: `GameWindow` 使用 `setFixedSize(1600, 900)` 锁死窗口尺寸，内部 1920×1080 场景通过 `fitInView` 缩放适配。需改为 `resize` + 移除 fixed size 才能支持全屏
-- **存档系统**: 仅内存存档 (`GlobalSaveData` 单例)，无文件持久化
+- 无多存档槽位（仅单存档文件 `savegame.json`）
+- 窗口最小尺寸 1280×720，低于此分辨率 UI 可能溢出
