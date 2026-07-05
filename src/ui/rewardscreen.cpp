@@ -75,7 +75,7 @@ RewardScreen::RewardScreen(QWidget *parent) : QWidget(parent) {
     boardLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
     boardLayout->setContentsMargins(0, 30, 0, 30);
 
-    QLabel* titleLabel = new QLabel("获取战利品", m_boardWidget);
+    QLabel* titleLabel = new QLabel("战斗胜利", m_boardWidget);
     titleLabel->setStyleSheet("color: #FFD700; font-size: 36px; font-weight: bold; border: none; background: transparent;");
     titleLabel->setAlignment(Qt::AlignCenter);
     boardLayout->addWidget(titleLabel);
